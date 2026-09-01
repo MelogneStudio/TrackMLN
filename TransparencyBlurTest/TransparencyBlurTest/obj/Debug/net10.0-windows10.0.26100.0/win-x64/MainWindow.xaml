@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Window
+    x:Class="TransparencyBlurTest.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:TransparencyBlurTest"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Transparency Blur Prototype">
+
+    <Grid x:ConnectionId='2' x:Name="RootGrid" Background="Transparent">
+        <!-- Tint Layer: 15% Black (38/255 alpha) -->
+        <Rectangle Fill="#26000000" />
+
+        <Border Width="400" Height="300"
+                Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+                CornerRadius="12"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BorderBrush="Gray"
+                BorderThickness="1">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="Opaque WinUI Content"
+                           FontSize="24"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,20"/>
+                <TextBlock Text="The background should be a live blur of your desktop with a 15% black tint."
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           MaxWidth="300"
+                           HorizontalAlignment="Center"/>
+                <Button Content="Test Button"
+                        HorizontalAlignment="Center"
+                        Margin="0,20,0,0"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
+
