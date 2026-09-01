@@ -293,11 +293,34 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn apply_window_glass(window: &WebviewWindow) {
+    // Tint the acrylic glass is stained with: (R, G, B, A).
+    // Matches TrackMLN's dark surface tone. Tune here for control.
     #[cfg(target_os = "windows")]
-    {
-        if window_vibrancy::apply_mica(window, Some(true)).is_err() {
-            let _ = window_vibrancy::apply_blur(window, Some((18, 18, 18, 120)));
+    const ACRYLIC_TINT: (u8, u8, u8, u8) = (18, 22, 28, 140);
+
+    fn apply_window_glass(window: &WebviewWindow) {
+        #[cfg(target_os = "windows")]
+        {
+            // Force WebView2's default background alpha to 0 so the acrylic
+            // shows through instead of a flat opaque fill.
+            let _ = window.with_webview(|webview| {
+                use webview2_com::Microsoft::Web::WebView2::Win32::{
+                    COREWEBVIEW2_COLOR, ICoreWebView2Controller2,
+                };
+                use windows_core::Interface;
+                unsafe {
+                    if let Ok(controller2) = webview
+                        .controller()
+                        .cast::<ICoreWebView2Controller2>()
+                    {
+                        let _ = controller2.SetDefaultBackgroundColor(
+                            COREWEBVIEW2_COLOR { A: 0, R: 0, G: 0, B: 0 },
+                        );
+                    }
+                }
+            });
+
+            // Acrylic (Windows 10 1803+). Custom tint = full control.
+            let _ = window_vibrancy::apply_acrylic(window, Some(ACRYLIC_TINT));
         }
     }
-}

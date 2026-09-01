@@ -426,7 +426,7 @@ fn read_version_metadata(path: &str) -> Option<VersionMetadata> {
     let ok = unsafe {
         GetFileVersionInfoW(
             PCWSTR(wide_path.as_ptr()),
-            0,
+            Some(0),
             info_size,
             buffer.as_mut_ptr() as *mut c_void,
         )
