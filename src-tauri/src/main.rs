@@ -109,6 +109,31 @@ fn main() {
             apply_window_glass(&main_window);
             apply_window_glass(&warn_window);
             apply_window_glass(&annoy_window);
+            {
+                let app_handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    use tauri::Manager;
+                    use std::collections::HashMap;
+                    let mut was_visible: HashMap<&str, bool> = HashMap::new();
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_millis(200));
+                        for label in ["main", "warn", "annoy"] {
+                            if let Some(w) = app_handle.get_webview_window(label) {
+                                let visible = w.is_visible().unwrap_or(false);
+                                let prev = *was_visible.get(label).unwrap_or(&false);
+                                if visible && !prev {
+                                    // hidden -> visible: force a recomposite
+                                    kick_transient_acrylic(&w);
+                                } else if visible {
+                                    // stay glass, idempotent, no flicker
+                                    apply_transient_acrylic(&w);
+                                }
+                                was_visible.insert(label, visible);
+                            }
+                        }
+                    }
+                });
+            }
             configure_main_window(&main_window)?;
             configure_warn_window(&warn_window)?;
             configure_alert_window(&annoy_window)?;
@@ -160,6 +185,7 @@ fn toggle_main_window(app: &AppHandle) {
         let _ = window.hide();
     } else {
         let _ = configure_main_window(&window);
+        apply_window_glass(&window);
         let _ = window.show();
         let _ = window.unminimize();
         let _ = window.set_focus();
@@ -295,8 +321,7 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn Error>> {
 
     // Tint the acrylic glass is stained with: (R, G, B, A).
     // Matches TrackMLN's dark surface tone. Tune here for control.
-    #[cfg(target_os = "windows")]
-    const ACRYLIC_TINT: (u8, u8, u8, u8) = (18, 22, 28, 140);
+
 
     fn apply_window_glass(window: &WebviewWindow) {
         #[cfg(target_os = "windows")]
@@ -320,7 +345,71 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn Error>> {
                 }
             });
 
-            // Acrylic (Windows 10 1803+). Custom tint = full control.
-            let _ = window_vibrancy::apply_acrylic(window, Some(ACRYLIC_TINT));
+            apply_transient_acrylic(window);
         }
     }
+
+    #[cfg(target_os = "windows")]
+    fn apply_transient_acrylic(window: &WebviewWindow) {
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::Graphics::Dwm::{
+            DwmSetWindowAttribute, DwmExtendFrameIntoClientArea,
+            DWMWA_SYSTEMBACKDROP_TYPE, DWMSBT_TRANSIENTWINDOW,
+        };
+        use windows::Win32::UI::Controls::MARGINS;
+
+        let Ok(raw) = window.hwnd() else { return };
+        // Reconstruct HWND with THIS crate's windows version to avoid a type
+        // mismatch with Tauri's re-exported HWND. If `HWND(raw.0)` fails to
+        // compile, use `HWND(raw.0 as _)`.
+        let hwnd = HWND(raw.0);
+
+        let backdrop = DWMSBT_TRANSIENTWINDOW;
+        unsafe {
+            let _ = DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_SYSTEMBACKDROP_TYPE,
+                &backdrop as *const _ as *const core::ffi::c_void,
+                std::mem::size_of_val(&backdrop) as u32,
+            );
+
+            // -1 margins = extend the glass across the whole client area, required
+            // for the system backdrop to paint on a borderless/transparent window.
+            let margins = MARGINS {
+                cxLeftWidth: -1,
+                cxRightWidth: -1,
+                cyTopHeight: -1,
+                cyBottomHeight: -1,
+            };
+            let _ = DwmExtendFrameIntoClientArea(hwnd, &margins);
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    fn kick_transient_acrylic(window: &WebviewWindow) {
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::Graphics::Dwm::{
+            DwmSetWindowAttribute, DWMWA_SYSTEMBACKDROP_TYPE,
+            DWMSBT_NONE,
+        };
+
+        let Ok(raw) = window.hwnd() else { return };
+        let hwnd = HWND(raw.0); // use `raw.0 as _` if this doesn't compile
+
+        unsafe {
+            // Force a real state change so DWM recomposites the backdrop.
+            let none = DWMSBT_NONE;
+            let _ = DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_SYSTEMBACKDROP_TYPE,
+                &none as *const _ as *const core::ffi::c_void,
+                std::mem::size_of_val(&none) as u32,
+            );
+        }
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        // Re-apply the real backdrop (+ frame extension) via the existing fn.
+        apply_transient_acrylic(window);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn kick_transient_acrylic(_window: &WebviewWindow) {}
