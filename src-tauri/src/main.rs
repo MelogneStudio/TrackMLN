@@ -7,6 +7,7 @@ mod models;
 mod recurrence;
 mod settings;
 mod stats;
+mod todos;
 mod tracker;
 
 use app_names::{default_cache_path, AppNameResolver};
@@ -43,6 +44,11 @@ fn main() {
             commands::get_hourly_today,
             stats::get_usage_range,
             stats::get_app_history,
+            todos::get_todos,
+            todos::save_todo_item,
+            todos::set_todo_completed,
+            todos::delete_todo_item,
+            todos::get_todo_summary,
             commands::get_goals,
             commands::get_goal_candidates,
             commands::get_settings,

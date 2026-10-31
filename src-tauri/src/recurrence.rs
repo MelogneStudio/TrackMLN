@@ -1,4 +1,4 @@
-use chrono::{Datelike, Duration, NaiveDate};
+use chrono::{Datelike, Duration, Local, NaiveDate, Timelike};
 use serde::{Deserialize, Serialize};
 
 const MAX_EXPANSION_DAYS: i64 = 3660;
@@ -35,6 +35,12 @@ fn default_interval() -> u32 {
 pub fn parse_date(value: &str) -> Result<NaiveDate, String> {
     NaiveDate::parse_from_str(value.trim(), "%Y-%m-%d")
         .map_err(|_| format!("Invalid date '{value}', expected YYYY-MM-DD"))
+}
+
+/// Local "today" and the current minute of the day (0..1440).
+pub fn local_clock() -> (NaiveDate, i64) {
+    let now = Local::now();
+    (now.date_naive(), (now.hour() * 60 + now.minute()) as i64)
 }
 
 pub fn days_in_month(year: i32, month: u32) -> u32 {
