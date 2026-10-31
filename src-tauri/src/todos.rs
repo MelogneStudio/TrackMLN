@@ -1,9 +1,9 @@
-use chrono::Local;
+use chrono::{Duration, Local};
 use rusqlite::{params, Connection, OptionalExtension, Row};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use crate::recurrence::{local_clock, parse_date};
+use crate::recurrence::{local_clock, parse_date, Recurrence};
 use crate::AppState;
 
 const MAX_TITLE_CHARS: usize = 200;
@@ -79,6 +79,18 @@ pub fn init_schema(connection: &Connection) -> rusqlite::Result<()> {
             template_id INTEGER,
             occurrence_date TEXT,
             skipped INTEGER NOT NULL DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS todo_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            notes TEXT NOT NULL DEFAULT '',
+            priority INTEGER NOT NULL DEFAULT 0,
+            due_minute INTEGER,
+            estimate_minutes INTEGER,
+            recurrence TEXT NOT NULL,
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at INTEGER NOT NULL
         );
 
         CREATE INDEX IF NOT EXISTS idx_todos_due ON todos(due_date);
@@ -335,6 +347,268 @@ pub fn summary(connection: &Connection) -> Result<TodoSummary, String> {
     })
 }
 
+// ── Recurring todos ──────────────────────────────────────────────────────────
+
+/// Occurrences of recurring todos are created this many days ahead of today.
+pub const MATERIALIZE_DAYS_AHEAD: i64 = 14;
+
+const TEMPLATE_COLUMNS: &str =
+    "id, title, notes, priority, due_minute, estimate_minutes, recurrence, active, created_at";
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TodoTemplate {
+    pub id: i64,
+    pub title: String,
+    pub notes: String,
+    pub priority: i64,
+    pub due_minute: Option<i64>,
+    pub estimate_minutes: Option<i64>,
+    pub recurrence: Recurrence,
+    pub active: bool,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TodoTemplateDraft {
+    #[serde(default)]
+    pub id: Option<i64>,
+    pub title: String,
+    #[serde(default)]
+    pub notes: String,
+    #[serde(default)]
+    pub priority: i64,
+    #[serde(default)]
+    pub due_minute: Option<i64>,
+    #[serde(default)]
+    pub estimate_minutes: Option<i64>,
+    pub recurrence: Recurrence,
+    #[serde(default = "default_active")]
+    pub active: bool,
+}
+
+fn default_active() -> bool {
+    true
+}
+
+fn row_to_template(row: &Row) -> rusqlite::Result<TodoTemplate> {
+    let raw: String = row.get(6)?;
+    let recurrence = serde_json::from_str::<Recurrence>(&raw).map_err(|err| {
+        rusqlite::Error::FromSqlConversionFailure(6, rusqlite::types::Type::Text, Box::new(err))
+    })?;
+    let active: i64 = row.get(7)?;
+
+    Ok(TodoTemplate {
+        id: row.get(0)?,
+        title: row.get(1)?,
+        notes: row.get(2)?,
+        priority: row.get(3)?,
+        due_minute: row.get(4)?,
+        estimate_minutes: row.get(5)?,
+        recurrence,
+        active: active != 0,
+        created_at: row.get(8)?,
+    })
+}
+
+pub fn list_templates(connection: &Connection) -> Result<Vec<TodoTemplate>, String> {
+    let mut statement = connection
+        .prepare(&format!("SELECT {TEMPLATE_COLUMNS} FROM todo_templates ORDER BY title COLLATE NOCASE, id"))
+        .map_err(db_err)?;
+    let templates = statement
+        .query_map([], row_to_template)
+        .map_err(db_err)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(db_err)?;
+    Ok(templates)
+}
+
+fn get_template(connection: &Connection, id: i64) -> Result<TodoTemplate, String> {
+    connection
+        .query_row(
+            &format!("SELECT {TEMPLATE_COLUMNS} FROM todo_templates WHERE id = ?1"),
+            params![id],
+            row_to_template,
+        )
+        .optional()
+        .map_err(db_err)?
+        .ok_or_else(|| "Recurring todo not found".to_string())
+}
+
+/// Creates the missing occurrences of every active recurring todo from today
+/// through `MATERIALIZE_DAYS_AHEAD`. Safe to call repeatedly: occurrences that
+/// already exist (done, edited, or removed) are left alone.
+pub fn materialize(connection: &Connection) -> Result<usize, String> {
+    let (today, _) = local_clock();
+    let until = today + Duration::days(MATERIALIZE_DAYS_AHEAD);
+    let now = Local::now().timestamp();
+    let mut created = 0;
+
+    for template in list_templates(connection)?.iter().filter(|template| template.active) {
+        for date in template.recurrence.occurrences_between(today, until) {
+            created += connection
+                .execute(
+                    "INSERT OR IGNORE INTO todos
+                        (title, notes, priority, due_date, due_minute, estimate_minutes,
+                         created_at, template_id, occurrence_date)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?4)",
+                    params![
+                        template.title,
+                        template.notes,
+                        template.priority,
+                        date.to_string(),
+                        template.due_minute,
+                        template.estimate_minutes,
+                        now,
+                        template.id
+                    ],
+                )
+                .map_err(db_err)?;
+        }
+    }
+    Ok(created)
+}
+
+/// Drops the upcoming, untouched occurrences of a series so they can be rebuilt
+/// from the current rule. Completed and individually removed ones stay.
+fn clear_upcoming_occurrences(connection: &Connection, template_id: i64) -> Result<(), String> {
+    let (today, _) = local_clock();
+    connection
+        .execute(
+            "DELETE FROM todos
+             WHERE template_id = ?1 AND completed_at IS NULL AND skipped = 0 AND due_date >= ?2",
+            params![template_id, today.to_string()],
+        )
+        .map_err(db_err)?;
+    Ok(())
+}
+
+pub fn save_template(connection: &Connection, draft: TodoTemplateDraft) -> Result<TodoTemplate, String> {
+    let recurrence = draft.recurrence.validated()?;
+    let checked = normalize_draft(TodoDraft {
+        id: None,
+        title: draft.title,
+        notes: draft.notes,
+        priority: draft.priority,
+        due_date: Some(recurrence.start_date.clone()),
+        due_minute: draft.due_minute,
+        estimate_minutes: draft.estimate_minutes,
+    })?;
+    let recurrence_json = serde_json::to_string(&recurrence).map_err(|err| err.to_string())?;
+
+    let id = match draft.id {
+        Some(id) => {
+            let changed = connection
+                .execute(
+                    "UPDATE todo_templates
+                     SET title = ?1, notes = ?2, priority = ?3, due_minute = ?4,
+                         estimate_minutes = ?5, recurrence = ?6, active = ?7
+                     WHERE id = ?8",
+                    params![
+                        checked.title,
+                        checked.notes,
+                        checked.priority,
+                        checked.due_minute,
+                        checked.estimate_minutes,
+                        recurrence_json,
+                        draft.active as i64,
+                        id
+                    ],
+                )
+                .map_err(db_err)?;
+            if changed == 0 {
+                return Err("Recurring todo not found".into());
+            }
+            id
+        }
+        None => {
+            connection
+                .execute(
+                    "INSERT INTO todo_templates
+                        (title, notes, priority, due_minute, estimate_minutes, recurrence, active, created_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                    params![
+                        checked.title,
+                        checked.notes,
+                        checked.priority,
+                        checked.due_minute,
+                        checked.estimate_minutes,
+                        recurrence_json,
+                        draft.active as i64,
+                        Local::now().timestamp()
+                    ],
+                )
+                .map_err(db_err)?;
+            connection.last_insert_rowid()
+        }
+    };
+
+    clear_upcoming_occurrences(connection, id)?;
+    materialize(connection)?;
+    get_template(connection, id)
+}
+
+pub fn set_template_active(connection: &Connection, id: i64, active: bool) -> Result<TodoTemplate, String> {
+    let changed = connection
+        .execute(
+            "UPDATE todo_templates SET active = ?1 WHERE id = ?2",
+            params![active as i64, id],
+        )
+        .map_err(db_err)?;
+    if changed == 0 {
+        return Err("Recurring todo not found".into());
+    }
+
+    if !active {
+        clear_upcoming_occurrences(connection, id)?;
+    }
+    materialize(connection)?;
+    get_template(connection, id)
+}
+
+/// Removes the series and every occurrence not yet completed. Completed
+/// occurrences stay as history.
+pub fn delete_template(connection: &Connection, id: i64) -> Result<(), String> {
+    connection
+        .execute(
+            "DELETE FROM todos WHERE template_id = ?1 AND completed_at IS NULL",
+            params![id],
+        )
+        .map_err(db_err)?;
+    let changed = connection
+        .execute("DELETE FROM todo_templates WHERE id = ?1", params![id])
+        .map_err(db_err)?;
+    if changed == 0 {
+        return Err("Recurring todo not found".into());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_todo_templates(state: State<AppState>) -> Result<Vec<TodoTemplate>, String> {
+    let connection = state.db.lock().map_err(|err| err.to_string())?;
+    list_templates(&connection)
+}
+
+#[tauri::command]
+pub fn save_todo_template(state: State<AppState>, draft: TodoTemplateDraft) -> Result<TodoTemplate, String> {
+    let connection = state.db.lock().map_err(|err| err.to_string())?;
+    save_template(&connection, draft)
+}
+
+#[tauri::command]
+pub fn set_todo_template_active(state: State<AppState>, template_id: i64, active: bool) -> Result<TodoTemplate, String> {
+    let connection = state.db.lock().map_err(|err| err.to_string())?;
+    set_template_active(&connection, template_id, active)
+}
+
+#[tauri::command]
+pub fn delete_todo_template(state: State<AppState>, template_id: i64) -> Result<(), String> {
+    let connection = state.db.lock().map_err(|err| err.to_string())?;
+    delete_template(&connection, template_id)
+}
+
 #[tauri::command]
 pub fn get_todos(
     state: State<AppState>,
@@ -343,6 +617,7 @@ pub fn get_todos(
     date_to: Option<String>,
 ) -> Result<Vec<Todo>, String> {
     let connection = state.db.lock().map_err(|err| err.to_string())?;
+    materialize(&connection)?;
     list_todos(
         &connection,
         status.as_deref().unwrap_or("open"),
@@ -372,6 +647,7 @@ pub fn delete_todo_item(state: State<AppState>, todo_id: i64) -> Result<(), Stri
 #[tauri::command]
 pub fn get_todo_summary(state: State<AppState>) -> Result<TodoSummary, String> {
     let connection = state.db.lock().map_err(|err| err.to_string())?;
+    materialize(&connection)?;
     summary(&connection)
 }
 
@@ -480,5 +756,101 @@ mod tests {
         let counts = summary(&connection).unwrap();
         assert_eq!(counts.open, 4);
         assert_eq!(counts.overdue, 1);
+    }
+}
+
+#[cfg(test)]
+mod template_tests {
+    use super::*;
+    use crate::recurrence::RecurrenceKind;
+
+    fn connection() -> Connection {
+        let connection = Connection::open_in_memory().unwrap();
+        init_schema(&connection).unwrap();
+        connection
+    }
+
+    fn daily_draft(title: &str) -> TodoTemplateDraft {
+        let (today, _) = local_clock();
+        TodoTemplateDraft {
+            id: None,
+            title: title.into(),
+            notes: String::new(),
+            priority: 1,
+            due_minute: Some(9 * 60),
+            estimate_minutes: None,
+            recurrence: Recurrence {
+                kind: RecurrenceKind::Daily,
+                interval: 1,
+                weekdays: vec![],
+                month_day: None,
+                start_date: today.to_string(),
+                end_date: None,
+            },
+            active: true,
+        }
+    }
+
+    #[test]
+    fn materializes_a_rolling_window_without_duplicates() {
+        let connection = connection();
+        save_template(&connection, daily_draft("Stretch")).unwrap();
+
+        let all = list_todos(&connection, "all", None, None).unwrap();
+        assert_eq!(all.len() as i64, MATERIALIZE_DAYS_AHEAD + 1);
+        assert!(all.iter().all(|todo| todo.template_id.is_some() && todo.due_minute == Some(540)));
+
+        assert_eq!(materialize(&connection).unwrap(), 0);
+    }
+
+    #[test]
+    fn deleting_one_occurrence_does_not_bring_it_back() {
+        let connection = connection();
+        save_template(&connection, daily_draft("Stretch")).unwrap();
+
+        let first = list_todos(&connection, "open", None, None).unwrap()[0].clone();
+        delete_todo(&connection, first.id).unwrap();
+        assert_eq!(materialize(&connection).unwrap(), 0);
+
+        let remaining = list_todos(&connection, "all", None, None).unwrap();
+        assert_eq!(remaining.len() as i64, MATERIALIZE_DAYS_AHEAD);
+        assert!(remaining.iter().all(|todo| todo.id != first.id));
+    }
+
+    #[test]
+    fn editing_the_series_keeps_completed_occurrences() {
+        let connection = connection();
+        let template = save_template(&connection, daily_draft("Stretch")).unwrap();
+
+        let first = list_todos(&connection, "open", None, None).unwrap()[0].clone();
+        set_completed(&connection, first.id, true).unwrap();
+
+        let mut edit = daily_draft("Stretch longer");
+        edit.id = Some(template.id);
+        save_template(&connection, edit).unwrap();
+
+        let all = list_todos(&connection, "all", None, None).unwrap();
+        assert_eq!(all.len() as i64, MATERIALIZE_DAYS_AHEAD + 1);
+        let done: Vec<_> = all.iter().filter(|todo| todo.completed).collect();
+        assert_eq!(done.len(), 1);
+        assert_eq!(done[0].title, "Stretch");
+        assert!(all.iter().filter(|todo| !todo.completed).all(|todo| todo.title == "Stretch longer"));
+    }
+
+    #[test]
+    fn pausing_and_deleting_a_series() {
+        let connection = connection();
+        let template = save_template(&connection, daily_draft("Stretch")).unwrap();
+
+        set_template_active(&connection, template.id, false).unwrap();
+        assert_eq!(list_todos(&connection, "open", None, None).unwrap().len(), 0);
+
+        set_template_active(&connection, template.id, true).unwrap();
+        assert_eq!(list_todos(&connection, "open", None, None).unwrap().len() as i64, MATERIALIZE_DAYS_AHEAD + 1);
+
+        delete_template(&connection, template.id).unwrap();
+        assert_eq!(list_todos(&connection, "all", None, None).unwrap().len(), 0);
+        assert!(list_templates(&connection).unwrap().is_empty());
+        assert!(delete_template(&connection, template.id).is_err());
     }
 }
