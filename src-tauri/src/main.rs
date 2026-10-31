@@ -4,6 +4,7 @@ mod app_names;
 mod commands;
 mod db;
 mod models;
+mod recurrence;
 mod settings;
 mod tracker;
 
