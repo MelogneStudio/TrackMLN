@@ -54,6 +54,7 @@ fn main() {
             commands::set_material,
             commands::reset_material,
             commands::set_exe_labels,
+            commands::set_idle_timeout,
             commands::get_pending_alert,
             commands::clear_pending_alert,
             commands::set_warn_clickthrough,
@@ -145,6 +146,7 @@ fn main() {
                 resolver,
                 limit_runtime,
                 pending_alerts,
+                settings_state.clone(),
                 app.handle().clone(),
             );
             Ok(())

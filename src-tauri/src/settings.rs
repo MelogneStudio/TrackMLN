@@ -7,6 +7,9 @@ pub const DEFAULT_HOTKEY: &str = "control+shift+Space";
 pub const DEFAULT_BLUR_PERCENT: u8 = 40;
 pub const MAX_BLUR_PERCENT: u8 = 100;
 pub const DEFAULT_MATERIAL: &str = "mica";
+pub const DEFAULT_IDLE_TIMEOUT_SECONDS: u64 = 300;
+pub const MIN_IDLE_TIMEOUT_SECONDS: u64 = 30;
+pub const MAX_IDLE_TIMEOUT_SECONDS: u64 = 7_200;
 
 pub fn default_settings_path(base_dir: impl AsRef<Path>) -> PathBuf {
     base_dir.as_ref().join("settings.json")
@@ -72,7 +75,17 @@ pub fn normalize_settings(mut settings: AppSettings) -> AppSettings {
     settings.blur_percent = settings.blur_percent.min(MAX_BLUR_PERCENT);
     settings.material = normalize_material(&settings.material).into();
     settings.exe_labels = normalize_exe_labels(settings.exe_labels);
+    settings.idle_timeout_seconds = normalize_idle_timeout(settings.idle_timeout_seconds);
     settings
+}
+
+/// 0 means "never pause for idle"; anything else is clamped to a sane range.
+pub fn normalize_idle_timeout(seconds: u64) -> u64 {
+    if seconds == 0 {
+        0
+    } else {
+        seconds.clamp(MIN_IDLE_TIMEOUT_SECONDS, MAX_IDLE_TIMEOUT_SECONDS)
+    }
 }
 
 pub fn normalize_exe_labels(exe_labels: HashMap<String, String>) -> HashMap<String, String> {

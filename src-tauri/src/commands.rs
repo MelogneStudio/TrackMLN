@@ -216,6 +216,14 @@ pub fn set_exe_labels(state: State<AppState>, exe_labels: HashMap<String, String
 }
 
 #[tauri::command]
+pub fn set_idle_timeout(state: State<AppState>, seconds: u64) -> Result<AppSettings, String> {
+    let mut settings_value = state.settings.lock().map_err(|err| err.to_string())?;
+    settings_value.idle_timeout_seconds = settings::normalize_idle_timeout(seconds);
+    settings::save_settings(&state.settings_path, &settings_value)?;
+    Ok(settings_value.clone())
+}
+
+#[tauri::command]
 pub fn set_hotkey(app: tauri::AppHandle, state: State<AppState>, hotkey: String) -> Result<AppSettings, String> {
     update_hotkey(app, state, hotkey)
 }

@@ -8,6 +8,8 @@ pub struct AppSettings {
     pub blur_percent: u8,
     pub material: String,
     pub exe_labels: HashMap<String, String>,
+    /// Seconds without keyboard/mouse input before tracking pauses. 0 disables it.
+    pub idle_timeout_seconds: u64,
 }
 
 impl Default for AppSettings {
@@ -17,6 +19,7 @@ impl Default for AppSettings {
             blur_percent: 100,
             material: "mica".into(),
             exe_labels: default_exe_labels(),
+            idle_timeout_seconds: 300,
         }
     }
 }
