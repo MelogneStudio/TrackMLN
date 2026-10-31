@@ -7,6 +7,7 @@ import { Focus } from "../pages/Focus";
 import { ScreenTime } from "../pages/ScreenTime";
 import { Settings } from "../pages/Settings";
 import { Tasks } from "../pages/Tasks";
+import { Timetable } from "../pages/Timetable";
 import { call } from "../utils/ipc";
 import { PageId, Sidebar } from "./Sidebar";
 import { Titlebar, useMaximized } from "./Titlebar";
@@ -99,7 +100,7 @@ export function AppShell() {
         {page === "screentime" ? <ScreenTime /> : null}
         {page === "focus" ? <Focus /> : null}
         {page === "tasks" ? <Tasks onNavigate={setPage} /> : null}
-        {page === "timetable" ? <ComingSoon title="Timetable" /> : null}
+        {page === "timetable" ? <Timetable onNavigate={setPage} /> : null}
         {page === "goals" ? <ComingSoon title="Limits" /> : null}
       </main>
     </div>

@@ -17,6 +17,7 @@ import "./styles/home.css";
 import "./styles/pages.css";
 import "./styles/tasks.css";
 import "./styles/focus.css";
+import "./styles/timetable.css";
 import "./styles/settings.css";
 import "./styles/onboarding.css";
 import "./styles/overlay.css";
