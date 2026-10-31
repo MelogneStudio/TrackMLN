@@ -275,7 +275,7 @@ fn update_hotkey(app: tauri::AppHandle, state: State<AppState>, hotkey: String) 
     }
 }
 
-fn present_app_total(
+pub fn present_app_total(
     resolver: &mut crate::app_names::AppNameResolver,
     mut app: AppTotal,
 ) -> AppTotal {

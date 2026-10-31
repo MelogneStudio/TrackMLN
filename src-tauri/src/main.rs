@@ -6,6 +6,7 @@ mod db;
 mod models;
 mod recurrence;
 mod settings;
+mod stats;
 mod tracker;
 
 use app_names::{default_cache_path, AppNameResolver};
@@ -40,6 +41,8 @@ fn main() {
             commands::get_today_totals,
             commands::get_week_dashboard,
             commands::get_hourly_today,
+            stats::get_usage_range,
+            stats::get_app_history,
             commands::get_goals,
             commands::get_goal_candidates,
             commands::get_settings,
