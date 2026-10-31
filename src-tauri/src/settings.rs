@@ -10,6 +10,7 @@ pub const DEFAULT_MATERIAL: &str = "mica";
 pub const DEFAULT_IDLE_TIMEOUT_SECONDS: u64 = 300;
 pub const MIN_IDLE_TIMEOUT_SECONDS: u64 = 30;
 pub const MAX_IDLE_TIMEOUT_SECONDS: u64 = 7_200;
+pub const MAX_UI_PREFS_BYTES: usize = 16 * 1024;
 
 pub fn default_settings_path(base_dir: impl AsRef<Path>) -> PathBuf {
     base_dir.as_ref().join("settings.json")
@@ -76,6 +77,9 @@ pub fn normalize_settings(mut settings: AppSettings) -> AppSettings {
     settings.material = normalize_material(&settings.material).into();
     settings.exe_labels = normalize_exe_labels(settings.exe_labels);
     settings.idle_timeout_seconds = normalize_idle_timeout(settings.idle_timeout_seconds);
+    if settings.ui_prefs.len() > MAX_UI_PREFS_BYTES {
+        settings.ui_prefs.clear();
+    }
     settings
 }
 

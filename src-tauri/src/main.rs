@@ -20,10 +20,10 @@ use models::{AppSettings, GoalAlertPayload};
 use settings::{default_settings_path, load_settings, save_settings, DEFAULT_HOTKEY};
 use std::error::Error;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::{
     Emitter,
-    menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewWindow, Window, WindowEvent,
 };
@@ -95,6 +95,12 @@ fn main() {
             commands::reset_material,
             commands::set_exe_labels,
             commands::set_idle_timeout,
+            commands::set_ui_prefs,
+            commands::show_app_window,
+            commands::show_overlay,
+            commands::hide_overlay,
+            commands::set_chrome_dark,
+            commands::quit_app,
             commands::get_pending_alert,
             commands::clear_pending_alert,
             commands::set_warn_clickthrough,
@@ -128,6 +134,9 @@ fn main() {
             let annoy_window = app
                 .get_webview_window("annoy")
                 .expect("annoy window should exist");
+            let overlay_window = app
+                .get_webview_window("overlay")
+                .expect("overlay window should exist");
 
             #[cfg(desktop)]
             {
@@ -149,9 +158,11 @@ fn main() {
             // Hide before applying glass effects — vibrancy calls briefly force
             // the window visible via DWM compositor redraw on Windows
             let _ = main_window.hide();
+            let _ = overlay_window.hide();
             let _ = warn_window.hide();
             let _ = annoy_window.hide();
             apply_window_glass(&main_window);
+            apply_window_glass(&overlay_window);
             apply_window_glass(&warn_window);
             apply_window_glass(&annoy_window);
             {
@@ -162,7 +173,7 @@ fn main() {
                     let mut was_visible: HashMap<&str, bool> = HashMap::new();
                     loop {
                         std::thread::sleep(std::time::Duration::from_millis(200));
-                        for label in ["main", "warn", "annoy"] {
+                        for label in ["main", "overlay", "warn", "annoy"] {
                             if let Some(w) = app_handle.get_webview_window(label) {
                                 let visible = w.is_visible().unwrap_or(false);
                                 let prev = *was_visible.get(label).unwrap_or(&false);
@@ -179,7 +190,7 @@ fn main() {
                     }
                 });
             }
-            configure_main_window(&main_window)?;
+            configure_overlay_window(&overlay_window)?;
             configure_warn_window(&warn_window)?;
             configure_alert_window(&annoy_window)?;
             setup_tray(app.handle())?;
@@ -205,7 +216,7 @@ fn setup_global_shortcut(app: &AppHandle, shortcut: &str) -> Result<(), Box<dyn 
         tauri_plugin_global_shortcut::Builder::new()
             .with_handler(move |app, _shortcut, event| {
                 if event.state() == ShortcutState::Pressed {
-                    toggle_main_window(app);
+                    toggle_overlay(app);
                 }
             })
             .build(),
@@ -220,23 +231,63 @@ fn setup_global_shortcut(_app: &AppHandle, _shortcut: &str) -> Result<(), Box<dy
     Ok(())
 }
 
-fn toggle_main_window(app: &AppHandle) {
+/// Milliseconds since the epoch; only used to debounce overlay show/hide.
+fn now_millis() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+static OVERLAY_SHOWN_AT: AtomicU64 = AtomicU64::new(0);
+static OVERLAY_BLUR_HID_AT: AtomicU64 = AtomicU64::new(0);
+
+/// Shows the full app window (onboarding, dashboards, settings).
+pub fn show_main_window(app: &AppHandle) {
     let Some(window) = app.get_webview_window("main") else {
         return;
     };
 
-    let is_visible = window.is_visible().unwrap_or(false);
-    let is_minimized = window.is_minimized().unwrap_or(false);
-
-    if is_visible && !is_minimized {
-        let _ = window.hide();
-    } else {
-        let _ = configure_main_window(&window);
-        apply_window_glass(&window);
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_focus();
+    if let Some(overlay) = app.get_webview_window("overlay") {
+        let _ = overlay.hide();
     }
+
+    apply_window_glass(&window);
+    let _ = window.show();
+    let _ = window.unminimize();
+    let _ = window.set_focus();
+}
+
+pub fn show_overlay_window(app: &AppHandle) {
+    let Some(window) = app.get_webview_window("overlay") else {
+        return;
+    };
+
+    let _ = window.center();
+    apply_window_glass(&window);
+    OVERLAY_SHOWN_AT.store(now_millis(), Ordering::SeqCst);
+    let _ = window.show();
+    let _ = window.set_focus();
+    let _ = window.emit("overlay-shown", ());
+}
+
+fn toggle_overlay(app: &AppHandle) {
+    let Some(window) = app.get_webview_window("overlay") else {
+        return;
+    };
+
+    if window.is_visible().unwrap_or(false) {
+        let _ = window.hide();
+        return;
+    }
+
+    // A tray click first steals focus (which hides the overlay) and then
+    // arrives as a toggle; swallow that second half so it doesn't reopen.
+    if now_millis().saturating_sub(OVERLAY_BLUR_HID_AT.load(Ordering::SeqCst)) < 350 {
+        return;
+    }
+
+    show_overlay_window(app);
 }
 
 fn handle_window_event(window: &Window, event: &WindowEvent) {
@@ -245,54 +296,29 @@ fn handle_window_event(window: &Window, event: &WindowEvent) {
     match event {
         WindowEvent::CloseRequested { api, .. } => {
             api.prevent_close();
-            if label == "main" {
-                let _ = window.minimize();
-            } else if label == "annoy" {
+            if label == "annoy" {
                 let _ = window.emit("annoy-close-requested", ());
             } else {
                 let _ = window.hide();
             }
         }
-        WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => {
-            if label == "main" {
-                let _ = configure_window(window);
+        WindowEvent::Focused(false) => {
+            if label == "overlay" {
+                // Focus can flicker right after show(); ignore that window.
+                if now_millis().saturating_sub(OVERLAY_SHOWN_AT.load(Ordering::SeqCst)) > 600 {
+                    OVERLAY_BLUR_HID_AT.store(now_millis(), Ordering::SeqCst);
+                    let _ = window.hide();
+                }
             }
         }
         _ => {}
     }
 }
 
-fn configure_main_window(window: &WebviewWindow) -> Result<(), Box<dyn Error>> {
-    if let Some(monitor) = window.current_monitor()? {
-        let monitor_size = monitor.size();
-        let monitor_position = monitor.position();
-
-        window.set_position(PhysicalPosition::new(
-            monitor_position.x,
-            monitor_position.y,
-        ))?;
-        window.set_size(PhysicalSize::new(monitor_size.width, monitor_size.height))?;
-    }
-
-    window.set_fullscreen(true)?;
+fn configure_overlay_window(window: &WebviewWindow) -> Result<(), Box<dyn Error>> {
     window.set_resizable(false)?;
-    Ok(())
-}
-
-fn configure_window(window: &Window) -> Result<(), Box<dyn Error>> {
-    if let Some(monitor) = window.current_monitor()? {
-        let monitor_size = monitor.size();
-        let monitor_position = monitor.position();
-
-        window.set_position(PhysicalPosition::new(
-            monitor_position.x,
-            monitor_position.y,
-        ))?;
-        window.set_size(PhysicalSize::new(monitor_size.width, monitor_size.height))?;
-    }
-
-    window.set_fullscreen(true)?;
-    window.set_resizable(false)?;
+    window.set_always_on_top(true)?;
+    window.set_skip_taskbar(true)?;
     Ok(())
 }
 
@@ -327,38 +353,28 @@ fn configure_alert_window(window: &WebviewWindow) -> Result<(), Box<dyn Error>> 
 }
 
 fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn Error>> {
-    let open = MenuItemBuilder::with_id("open", "Open").build(app)?;
-    let close = MenuItemBuilder::with_id("close", "Close").build(app)?;
-    let menu = MenuBuilder::new(app).items(&[&open, &close]).build()?;
     let tray_icon = app
         .default_window_icon()
         .cloned()
         .ok_or("missing default window icon")?;
-    let app_handle = app.clone();
 
+    // No native menu: left-click toggles the quick overlay, right-click opens
+    // the full app (which has its own quit action).
     TrayIconBuilder::with_id("main-tray")
         .icon(tray_icon)
-        .menu(&menu)
-        .show_menu_on_left_click(false)
-        .on_menu_event(move |app, event| match event.id().as_ref() {
-            "open" => toggle_main_window(app),
-            "close" => {
-                let state = app.state::<AppState>();
-                if let Ok(mut resolver) = state.app_name_resolver.lock() {
-                    let _ = resolver.save_if_dirty();
-                }
-                app_handle.exit(0);
-            }
-            _ => {}
-        })
+        .tooltip("TrackMLN")
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click {
-                button: MouseButton::Left,
+                button,
                 button_state: MouseButtonState::Up,
                 ..
             } = event
             {
-                toggle_main_window(tray.app_handle());
+                match button {
+                    MouseButton::Left => toggle_overlay(tray.app_handle()),
+                    MouseButton::Right => show_main_window(tray.app_handle()),
+                    _ => {}
+                }
             }
         })
         .build(app)?;
@@ -402,6 +418,7 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn Error>> {
         use windows::Win32::Graphics::Dwm::{
             DwmSetWindowAttribute, DwmExtendFrameIntoClientArea,
             DWMWA_SYSTEMBACKDROP_TYPE, DWMSBT_TRANSIENTWINDOW,
+            DWMWA_WINDOW_CORNER_PREFERENCE,
         };
         use windows::Win32::UI::Controls::MARGINS;
 
@@ -429,8 +446,40 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn Error>> {
                 cyBottomHeight: -1,
             };
             let _ = DwmExtendFrameIntoClientArea(hwnd, &margins);
+
+            // 2 = DWMWCP_ROUND: keep the acrylic clipped to rounded corners.
+            let corner: i32 = 2;
+            let _ = DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_WINDOW_CORNER_PREFERENCE,
+                &corner as *const _ as *const core::ffi::c_void,
+                std::mem::size_of::<i32>() as u32,
+            );
         }
     }
+
+    /// Switches the system backdrop tint between its dark and light variants so
+    /// the translucent sidebar matches the chosen theme.
+    #[cfg(target_os = "windows")]
+    pub fn set_window_dark_mode(window: &WebviewWindow, dark: bool) {
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_USE_IMMERSIVE_DARK_MODE};
+
+        let Ok(raw) = window.hwnd() else { return };
+        let hwnd = HWND(raw.0);
+        let value: i32 = if dark { 1 } else { 0 };
+        unsafe {
+            let _ = DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_USE_IMMERSIVE_DARK_MODE,
+                &value as *const _ as *const core::ffi::c_void,
+                std::mem::size_of::<i32>() as u32,
+            );
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    pub fn set_window_dark_mode(_window: &WebviewWindow, _dark: bool) {}
 
     #[cfg(target_os = "windows")]
     fn kick_transient_acrylic(window: &WebviewWindow) {

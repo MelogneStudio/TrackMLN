@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 #[cfg(desktop)]
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
@@ -221,6 +221,52 @@ pub fn set_idle_timeout(state: State<AppState>, seconds: u64) -> Result<AppSetti
     settings_value.idle_timeout_seconds = settings::normalize_idle_timeout(seconds);
     settings::save_settings(&state.settings_path, &settings_value)?;
     Ok(settings_value.clone())
+}
+
+#[tauri::command]
+pub fn set_ui_prefs(app: AppHandle, state: State<AppState>, prefs: String) -> Result<AppSettings, String> {
+    if prefs.len() > settings::MAX_UI_PREFS_BYTES {
+        return Err("Preferences are too large".into());
+    }
+    let mut settings_value = state.settings.lock().map_err(|err| err.to_string())?;
+    settings_value.ui_prefs = prefs.clone();
+    settings::save_settings(&state.settings_path, &settings_value)?;
+    let _ = app.emit("ui-prefs-changed", prefs);
+    Ok(settings_value.clone())
+}
+
+#[tauri::command]
+pub fn show_app_window(app: AppHandle) {
+    crate::show_main_window(&app);
+}
+
+#[tauri::command]
+pub fn show_overlay(app: AppHandle) {
+    crate::show_overlay_window(&app);
+}
+
+#[tauri::command]
+pub fn hide_overlay(app: AppHandle) {
+    if let Some(window) = app.get_webview_window("overlay") {
+        let _ = window.hide();
+    }
+}
+
+#[tauri::command]
+pub fn set_chrome_dark(app: AppHandle, dark: bool) {
+    for label in ["main", "overlay"] {
+        if let Some(window) = app.get_webview_window(label) {
+            crate::set_window_dark_mode(&window, dark);
+        }
+    }
+}
+
+#[tauri::command]
+pub fn quit_app(app: AppHandle, state: State<AppState>) {
+    if let Ok(mut resolver) = state.app_name_resolver.lock() {
+        let _ = resolver.save_if_dirty();
+    }
+    app.exit(0);
 }
 
 #[tauri::command]
