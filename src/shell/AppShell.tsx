@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Onboarding } from "../onboarding/Onboarding";
 import { usePrefs } from "../lib/prefs";
 import { Home } from "../pages/Home";
+import { ScreenTime } from "../pages/ScreenTime";
 import { Settings } from "../pages/Settings";
 import { call } from "../utils/ipc";
 import { PageId, Sidebar } from "./Sidebar";
@@ -72,7 +73,7 @@ export function AppShell() {
       <main className="win__main">
         {page === "home" ? <Home onNavigate={setPage} /> : null}
         {page === "settings" ? <Settings /> : null}
-        {page === "screentime" ? <ComingSoon title="Screen time" /> : null}
+        {page === "screentime" ? <ScreenTime /> : null}
         {page === "focus" ? <ComingSoon title="Focus" /> : null}
         {page === "tasks" ? <ComingSoon title="Tasks" /> : null}
         {page === "timetable" ? <ComingSoon title="Timetable" /> : null}
