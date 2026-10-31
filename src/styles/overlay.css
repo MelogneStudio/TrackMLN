@@ -31,6 +31,18 @@
   font-size: 12px;
 }
 
+.ov__notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+  font-size: 14px;
+  animation: rise-in 220ms var(--ease);
+}
+
 .ov__grid {
   flex: 1;
   min-height: 0;

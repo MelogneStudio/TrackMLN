@@ -4,6 +4,7 @@ import { THEMES } from "../lib/theme";
 import type { AppSettings } from "../types";
 import { call, errorMessage } from "../utils/ipc";
 import { buildShortcut, shortcutParts } from "../utils/shortcut";
+import { Toggle } from "../ui/Controls";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { Select } from "../ui/Select";
@@ -185,6 +186,9 @@ export function Settings() {
                 Try it
               </button>
             </div>
+          </Row>
+          <Row label="Pop up when a focus phase ends" hint="Shows the overlay so a finished session never goes unnoticed.">
+            <Toggle on={prefs.focusPopup} onChange={(focusPopup) => update({ focusPopup })} label="Pop up when a focus phase ends" />
           </Row>
         </Section>
 

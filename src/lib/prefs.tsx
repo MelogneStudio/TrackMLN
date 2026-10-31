@@ -12,6 +12,8 @@ export type Prefs = {
   onboardingDone: boolean;
   /** Target for the "time focused" ring, in minutes. */
   focusGoalMinutes: number;
+  /** Pop the overlay up when a focus phase ends. */
+  focusPopup: boolean;
 };
 
 export const DEFAULT_PREFS: Prefs = {
@@ -19,7 +21,8 @@ export const DEFAULT_PREFS: Prefs = {
   theme: "grey",
   sidebarTranslucency: 55,
   onboardingDone: false,
-  focusGoalMinutes: 120
+  focusGoalMinutes: 120,
+  focusPopup: true
 };
 
 export function parsePrefs(raw: string | null | undefined): Prefs {
@@ -40,6 +43,7 @@ export function parsePrefs(raw: string | null | undefined): Prefs {
       theme,
       sidebarTranslucency: translucency,
       onboardingDone: value.onboardingDone === true,
+      focusPopup: value.focusPopup !== false,
       focusGoalMinutes:
         typeof value.focusGoalMinutes === "number" && value.focusGoalMinutes >= 5 && value.focusGoalMinutes <= 1440
           ? Math.round(value.focusGoalMinutes)

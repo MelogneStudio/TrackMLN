@@ -8,6 +8,7 @@ import { MiniTimetable } from "../features/MiniTimetable";
 import { useClock, useTodayUsage } from "../lib/hooks";
 import { usePrefs } from "../lib/prefs";
 import type { PageId } from "../shell/Sidebar";
+import type { FocusPhase } from "../types";
 import { BarChart } from "../ui/BarChart";
 import { Icon } from "../ui/Icon";
 import { formatDuration, formatHeroDuration, formatHour, greetingFor } from "../utils/format";
@@ -46,6 +47,43 @@ export function Overlay() {
   const active = useOverlayActive();
   const usage = useTodayUsage(active, 2000);
   const now = useClock(15_000);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: number | null = null;
+    const disposers: Array<() => void> = [];
+    const show = (message: string) => {
+      setNotice(message);
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => setNotice(null), 12_000);
+    };
+
+    void listen<{ ended: FocusPhase; next: FocusPhase | null; completed: boolean }>("focus-phase-ended", (event) => {
+      const { ended, next, completed } = event.payload;
+      if (ended === "focus") {
+        show(
+          !completed
+            ? "Focus session ended early."
+            : next === "longBreak"
+              ? "Great work. Time for a long break."
+              : "Focus session done. Take a short break."
+        );
+      } else {
+        show(next === "focus" ? "Break over. Ready for the next session?" : "Break finished.");
+      }
+    }).then((unlisten) => (cancelled ? unlisten() : disposers.push(unlisten)));
+
+    void listen<{ focusSessions: number }>("focus-finished", (event) => {
+      show(`All done: ${event.payload.focusSessions} focus sessions completed. Well done.`);
+    }).then((unlisten) => (cancelled ? unlisten() : disposers.push(unlisten)));
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+      disposers.forEach((dispose) => dispose());
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -92,6 +130,16 @@ export function Overlay() {
           </button>
         </div>
       </header>
+
+      {notice ? (
+        <div className="ov__notice" role="status">
+          <Icon name="bolt" size={16} />
+          <span className="grow">{notice}</span>
+          <button className="icon-btn icon-btn--sm" type="button" aria-label="Dismiss" onClick={() => setNotice(null)}>
+            <Icon name="x" size={14} />
+          </button>
+        </div>
+      ) : null}
 
       <div className="ov__grid">
         <section className="ov__card ov__card--screen">

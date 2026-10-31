@@ -1,8 +1,9 @@
 import { listen } from "@tauri-apps/api/event";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Onboarding } from "../onboarding/Onboarding";
 import { usePrefs } from "../lib/prefs";
 import { Home } from "../pages/Home";
+import { Focus } from "../pages/Focus";
 import { ScreenTime } from "../pages/ScreenTime";
 import { Settings } from "../pages/Settings";
 import { Tasks } from "../pages/Tasks";
@@ -49,6 +50,27 @@ export function AppShell() {
     };
   }, []);
 
+  const popupRef = useRef(prefs.focusPopup);
+  popupRef.current = prefs.focusPopup;
+
+  useEffect(() => {
+    let cancelled = false;
+    const disposers: Array<() => void> = [];
+    const popup = () => {
+      if (popupRef.current) void call("show_overlay");
+    };
+    for (const name of ["focus-phase-ended", "focus-finished"]) {
+      void listen(name, popup).then((unlisten) => {
+        if (cancelled) unlisten();
+        else disposers.push(unlisten);
+      });
+    }
+    return () => {
+      cancelled = true;
+      disposers.forEach((dispose) => dispose());
+    };
+  }, []);
+
   if (!loaded) {
     return null;
   }
@@ -75,7 +97,7 @@ export function AppShell() {
         {page === "home" ? <Home onNavigate={setPage} /> : null}
         {page === "settings" ? <Settings /> : null}
         {page === "screentime" ? <ScreenTime /> : null}
-        {page === "focus" ? <ComingSoon title="Focus" /> : null}
+        {page === "focus" ? <Focus /> : null}
         {page === "tasks" ? <Tasks onNavigate={setPage} /> : null}
         {page === "timetable" ? <ComingSoon title="Timetable" /> : null}
         {page === "goals" ? <ComingSoon title="Limits" /> : null}
