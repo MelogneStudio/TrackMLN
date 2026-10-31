@@ -307,13 +307,13 @@ pub fn delete_todo(connection: &Connection, id: i64) -> Result<(), String> {
             connection
                 .execute("UPDATE todos SET skipped = 1 WHERE id = ?1", params![id])
                 .map_err(db_err)?;
-            Ok(())
+            crate::timetable::detach_todo(connection, id)
         }
         Some(None) => {
             connection
                 .execute("DELETE FROM todos WHERE id = ?1", params![id])
                 .map_err(db_err)?;
-            Ok(())
+            crate::timetable::detach_todo(connection, id)
         }
     }
 }
@@ -658,6 +658,7 @@ mod tests {
     fn connection() -> Connection {
         let connection = Connection::open_in_memory().unwrap();
         init_schema(&connection).unwrap();
+        crate::timetable::init_schema(&connection).unwrap();
         connection
     }
 
@@ -767,6 +768,7 @@ mod template_tests {
     fn connection() -> Connection {
         let connection = Connection::open_in_memory().unwrap();
         init_schema(&connection).unwrap();
+        crate::timetable::init_schema(&connection).unwrap();
         connection
     }
 

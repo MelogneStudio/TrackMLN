@@ -7,6 +7,7 @@ mod models;
 mod recurrence;
 mod settings;
 mod stats;
+mod timetable;
 mod todos;
 mod tracker;
 
@@ -53,6 +54,16 @@ fn main() {
             todos::save_todo_template,
             todos::set_todo_template_active,
             todos::delete_todo_template,
+            timetable::get_timetable,
+            timetable::get_timetable_entries,
+            timetable::save_timetable_entry,
+            timetable::delete_timetable_entry,
+            timetable::skip_timetable_occurrence,
+            timetable::edit_timetable_occurrence,
+            timetable::restore_timetable_occurrence,
+            timetable::schedule_todo_block,
+            timetable::unschedule_todo_blocks,
+            timetable::get_free_slots,
             commands::get_goals,
             commands::get_goal_candidates,
             commands::get_settings,

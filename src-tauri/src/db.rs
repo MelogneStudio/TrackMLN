@@ -62,6 +62,7 @@ pub fn init_schema(connection: &Connection) -> rusqlite::Result<()> {
     ensure_column(connection, "goals", "warn_seconds", "INTEGER")?;
     ensure_column(connection, "goals", "annoy_seconds", "INTEGER")?;
     crate::todos::init_schema(connection)?;
+    crate::timetable::init_schema(connection)?;
     Ok(())
 }
 
