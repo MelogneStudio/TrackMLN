@@ -15,6 +15,7 @@ import "./styles/base.css";
 import "./styles/shell.css";
 import "./styles/home.css";
 import "./styles/pages.css";
+import "./styles/tasks.css";
 import "./styles/settings.css";
 import "./styles/onboarding.css";
 import "./styles/overlay.css";

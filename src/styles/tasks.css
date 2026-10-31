@@ -1,0 +1,131 @@
+.list {
+  display: grid;
+  gap: 8px;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  transition: border-color 140ms var(--ease);
+}
+
+.item:hover {
+  border-color: var(--border-strong);
+}
+
+.item .check {
+  margin-top: 2px;
+}
+
+.item__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.item__title {
+  font-size: 15px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.item.is-done .item__title {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+
+.item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.item__meta:empty {
+  display: none;
+}
+
+.item__notes {
+  margin-top: 6px;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.item__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.55;
+  transition: opacity 140ms var(--ease);
+}
+
+.item:hover .item__actions,
+.item:focus-within .item__actions {
+  opacity: 1;
+}
+
+.chip--button {
+  cursor: pointer;
+  background: transparent;
+}
+
+.chip--button:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+/* Recurrence editor ------------------------------------------------------- */
+
+.recur {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.recur__line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.recur__num {
+  width: 72px;
+}
+
+.recur__kind {
+  width: 140px;
+}
+
+.recur__days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.recur__day {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  transition: background 140ms var(--ease), color 140ms var(--ease), border-color 140ms var(--ease);
+}
+
+.recur__day:hover {
+  border-color: var(--border-strong);
+}
+
+.recur__day.is-on {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}

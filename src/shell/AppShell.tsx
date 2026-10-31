@@ -5,6 +5,7 @@ import { usePrefs } from "../lib/prefs";
 import { Home } from "../pages/Home";
 import { ScreenTime } from "../pages/ScreenTime";
 import { Settings } from "../pages/Settings";
+import { Tasks } from "../pages/Tasks";
 import { call } from "../utils/ipc";
 import { PageId, Sidebar } from "./Sidebar";
 import { Titlebar, useMaximized } from "./Titlebar";
@@ -75,7 +76,7 @@ export function AppShell() {
         {page === "settings" ? <Settings /> : null}
         {page === "screentime" ? <ScreenTime /> : null}
         {page === "focus" ? <ComingSoon title="Focus" /> : null}
-        {page === "tasks" ? <ComingSoon title="Tasks" /> : null}
+        {page === "tasks" ? <Tasks onNavigate={setPage} /> : null}
         {page === "timetable" ? <ComingSoon title="Timetable" /> : null}
         {page === "goals" ? <ComingSoon title="Limits" /> : null}
       </main>
