@@ -7,6 +7,7 @@ mod focus;
 mod focus_store;
 mod models;
 mod recurrence;
+mod scheduler;
 mod settings;
 mod stats;
 mod timetable;
@@ -116,6 +117,8 @@ fn main() {
             let limit_runtime = Arc::new(Mutex::new(tracker::LimitRuntime::default()));
             let pending_alerts = Arc::new(Mutex::new(std::collections::HashMap::new()));
             let tracker_db = db.clone();
+            let scheduler_db = db.clone();
+            let focus_engine = Arc::new(Mutex::new(focus::FocusEngine::default()));
             let main_window = app
                 .get_webview_window("main")
                 .expect("main window should exist");
@@ -141,7 +144,7 @@ fn main() {
                 app_name_resolver: resolver.clone(),
                 limit_runtime: limit_runtime.clone(),
                 pending_alerts: pending_alerts.clone(),
-                focus: Arc::new(Mutex::new(focus::FocusEngine::default())),
+                focus: focus_engine.clone(),
             });
             // Hide before applying glass effects — vibrancy calls briefly force
             // the window visible via DWM compositor redraw on Windows
@@ -189,6 +192,7 @@ fn main() {
                 settings_state.clone(),
                 app.handle().clone(),
             );
+            scheduler::start_scheduler(scheduler_db, focus_engine, app.handle().clone());
             Ok(())
         })
         .run(tauri::generate_context!())
