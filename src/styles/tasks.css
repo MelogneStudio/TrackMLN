@@ -68,6 +68,30 @@
   opacity: 1;
 }
 
+.goal__meter {
+  position: relative;
+  margin-top: 10px;
+}
+
+.goal__tick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--warning);
+  opacity: 0.8;
+}
+
+.goal__warn {
+  color: var(--warning);
+}
+
+.goal__over {
+  color: var(--danger);
+}
+
 .chip--button {
   cursor: pointer;
   background: transparent;

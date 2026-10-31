@@ -4,6 +4,7 @@ import { Onboarding } from "../onboarding/Onboarding";
 import { usePrefs } from "../lib/prefs";
 import { Home } from "../pages/Home";
 import { Focus } from "../pages/Focus";
+import { Goals } from "../pages/Goals";
 import { ScreenTime } from "../pages/ScreenTime";
 import { Settings } from "../pages/Settings";
 import { Tasks } from "../pages/Tasks";
@@ -11,15 +12,6 @@ import { Timetable } from "../pages/Timetable";
 import { call } from "../utils/ipc";
 import { PageId, Sidebar } from "./Sidebar";
 import { Titlebar, useMaximized } from "./Titlebar";
-
-function ComingSoon({ title }: { title: string }) {
-  return (
-    <div className="page">
-      <h1 className="page-title">{title}</h1>
-      <div className="empty">This screen is being built.</div>
-    </div>
-  );
-}
 
 const PAGE_IDS: PageId[] = ["home", "screentime", "focus", "tasks", "timetable", "goals", "settings"];
 
@@ -101,7 +93,7 @@ export function AppShell() {
         {page === "focus" ? <Focus /> : null}
         {page === "tasks" ? <Tasks onNavigate={setPage} /> : null}
         {page === "timetable" ? <Timetable onNavigate={setPage} /> : null}
-        {page === "goals" ? <ComingSoon title="Limits" /> : null}
+        {page === "goals" ? <Goals /> : null}
       </main>
     </div>
   );
