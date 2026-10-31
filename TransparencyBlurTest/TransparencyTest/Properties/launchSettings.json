@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "TransparencyTest (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "TransparencyTest (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

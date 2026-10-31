@@ -1,0 +1,56 @@
+/* Shared page-level pieces: tiles, toolbars, list rows. */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.tile {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.tile__label {
+  font-size: 12px;
+}
+
+.tile__value {
+  margin-top: 4px;
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.tile__hint {
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+.rank__row--button {
+  padding: 7px 10px;
+  margin: 0 -10px;
+  width: calc(100% + 20px);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  color: inherit;
+}
+
+.rank__row--button:hover {
+  background: var(--hover);
+}
+
+.rank__row--button.is-selected {
+  background: var(--accent-soft);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}

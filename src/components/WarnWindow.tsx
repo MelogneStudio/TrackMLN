@@ -85,7 +85,7 @@ export function WarnWindow() {
 
   return (
     <main className="warn-shell">
-      <section className="warn-toast glass-card" key={instanceKey}>
+      <section className="warn-toast" key={instanceKey}>
         <button
           className="warn-toast__close"
           onClick={dismiss}

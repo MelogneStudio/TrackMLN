@@ -1,0 +1,209 @@
+.home {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.home__col {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (max-width: 1040px) {
+  .home {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.home__vs {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.home__chart {
+  margin-top: 18px;
+}
+
+/* ── Focus mini ─────────────────────────────────────────────────────────── */
+
+.focus-mini {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.focus-mini__main {
+  display: grid;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.focus-mini__cap {
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.focus-mini__clock {
+  font-size: 54px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-mini__ring {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.focus-mini__ring:not(:disabled) {
+  cursor: pointer;
+}
+
+.focus-mini__pct {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.focus-mini__ringcap {
+  display: grid;
+  justify-items: center;
+}
+
+.focus-mini__ringcap .focus-mini__cap {
+  margin-bottom: 0;
+}
+
+.focus-mini__ringcap strong {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* ── Mini tasks ─────────────────────────────────────────────────────────── */
+
+.mini-tasks {
+  display: grid;
+  gap: 12px;
+}
+
+.mini-tasks__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mini-tasks__ring {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.mini-tasks__pct {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mini-tasks__cap {
+  font-size: 12px;
+}
+
+.mini-tasks__list {
+  display: grid;
+  gap: 4px;
+}
+
+.mini-task {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.mini-task__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.mini-task.is-done .mini-task__title {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+
+.mini-task__time {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Checkbox ----------------------------------------------------------------- */
+
+.check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-strong);
+  background: transparent;
+  color: var(--accent-fg);
+  transition: background 140ms var(--ease), border-color 140ms var(--ease);
+}
+
+.check:hover {
+  border-color: var(--accent);
+}
+
+.check.is-checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── Timetable line ─────────────────────────────────────────────────────── */
+
+.tt-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.tt-line__dot {
+  flex: none;
+  width: 8px;
+  align-self: stretch;
+  border-radius: 4px;
+}
+
+.tt-line__cap {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tt-line__title {
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

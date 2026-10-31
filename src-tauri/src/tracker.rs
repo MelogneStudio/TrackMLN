@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Duration as ChronoDuration, Local};
 use crate::app_names::{AppNameResolver, ResolvedApp};
-use crate::models::{Goal, GoalAlertPayload};
+use crate::models::{AppSettings, Goal, GoalAlertPayload};
 use tauri::{AppHandle, Emitter, Manager};
 use windows::core::{PCWSTR, PWSTR};
 use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, LRESULT, RECT, WPARAM};
@@ -17,19 +17,24 @@ use windows::Win32::System::Threading::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetForegroundWindow,
-    GetMessageW, GetWindowThreadProcessId, MSG, RegisterClassW, MB_ICONERROR,
+    GetMessageW, GetWindowRect, GetWindowThreadProcessId, MSG, RegisterClassW, MB_ICONERROR,
     MB_ICONWARNING,
     WINDOW_EX_STYLE, WNDCLASSW, WS_OVERLAPPEDWINDOW,
 };
 use windows::Win32::System::Power::{
     RegisterPowerSettingNotification, POWERBROADCAST_SETTING,
 };
+use windows::Win32::System::SystemInformation::GetTickCount;
 use windows::Win32::System::SystemServices::GUID_MONITOR_POWER_ON;
+use windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
 
 use crate::db::{self, SharedDb};
 
 const POLL_INTERVAL: Duration = Duration::from_secs(1);
-const MAX_SESSION_GAP: Duration = Duration::from_secs(4);
+// A tick further apart than this means the machine slept or the process stalled.
+const MAX_TICK_GAP_SECONDS: i64 = 4;
+// Long sessions are written out this often so a crash loses at most this much.
+const CHECKPOINT_SECONDS: i64 = 60;
 const ANNOY_REPEAT_INTERVAL_MINUTES: i64 = 10;
 const SNOOZE_DURATIONS_MINUTES: [i64; 3] = [5, 3, 1];
 
@@ -70,6 +75,7 @@ pub fn start_tracker(
     app_name_resolver: Arc<Mutex<AppNameResolver>>,
     limit_runtime: Arc<Mutex<LimitRuntime>>,
     pending_alerts: Arc<Mutex<HashMap<String, GoalAlertPayload>>>,
+    settings: Arc<Mutex<AppSettings>>,
     app_handle: AppHandle,
 ) {
     // Spin up the power monitor on its own thread (needs its own message loop)
@@ -83,6 +89,7 @@ pub fn start_tracker(
             app_name_resolver,
             limit_runtime,
             pending_alerts,
+            settings,
             app_handle,
         );
         tracker.run();
@@ -164,12 +171,13 @@ struct Tracker {
     app_name_resolver: Arc<Mutex<AppNameResolver>>,
     limit_runtime: Arc<Mutex<LimitRuntime>>,
     pending_alerts: Arc<Mutex<HashMap<String, GoalAlertPayload>>>,
+    settings: Arc<Mutex<AppSettings>>,
     app_handle: AppHandle,
     current_identity: Option<String>,
     current_exe_name: Option<String>,
     current_app: Option<String>,
     session_start: Option<DateTime<Local>>,
-    last_tick: Instant,
+    last_tick: DateTime<Local>,
 }
 
 impl Tracker {
@@ -178,6 +186,7 @@ impl Tracker {
         app_name_resolver: Arc<Mutex<AppNameResolver>>,
         limit_runtime: Arc<Mutex<LimitRuntime>>,
         pending_alerts: Arc<Mutex<HashMap<String, GoalAlertPayload>>>,
+        settings: Arc<Mutex<AppSettings>>,
         app_handle: AppHandle,
     ) -> Self {
         Self {
@@ -185,12 +194,13 @@ impl Tracker {
             app_name_resolver,
             limit_runtime,
             pending_alerts,
+            settings,
             app_handle,
             current_identity: None,
             current_exe_name: None,
             current_app: None,
             session_start: None,
-            last_tick: Instant::now(),
+            last_tick: Local::now(),
         }
     }
 
@@ -204,32 +214,43 @@ impl Tracker {
     }
 
     fn tick(&mut self) -> Result<(), String> {
-        let now = Instant::now();
-        let elapsed = now.duration_since(self.last_tick);
-
-        // Gap too large = laptop was asleep or suspended
-        if elapsed > MAX_SESSION_GAP {
-            self.flush_current()?;
-        }
-
+        let now = Local::now();
+        let previous_tick = self.last_tick;
+        let gap = now.timestamp() - previous_tick.timestamp();
         self.last_tick = now;
+
+        if gap > MAX_TICK_GAP_SECONDS {
+            // Slept or stalled: credit the app only up to the last tick we saw.
+            self.flush_current_at(previous_tick)?;
+        } else if gap < 0 {
+            // Clock moved backwards; close the session rather than stretch it.
+            self.flush_current_at(now)?;
+        }
 
         // Screen is off — flush whatever was running and skip this tick
         if !SCREEN_ON.load(Ordering::Relaxed) {
-            self.flush_current()?;
+            self.flush_current_at(now)?;
+            return Ok(());
+        }
+
+        // No keyboard/mouse input for longer than the idle timeout — stop counting
+        // from the moment the threshold was crossed, not from when we noticed.
+        if let Some(excess_seconds) = self.idle_excess_seconds() {
+            self.flush_current_at(now - ChronoDuration::seconds(excess_seconds))?;
             return Ok(());
         }
 
         let resolved = get_active_window(&self.app_name_resolver);
 
         if self.current_identity.as_deref() != Some(resolved.identity.as_str()) {
-            self.flush_current()?;
+            self.flush_current_at(now)?;
             self.current_identity = Some(resolved.identity.clone());
             self.current_exe_name = Some(resolved.exe_name.clone());
             self.current_app = Some(resolved.app_name.clone());
-            self.session_start = Some(Local::now());
+            self.session_start = Some(now);
         }
 
+        self.checkpoint_if_due(now)?;
         self.check_limits()?;
         self
             .app_name_resolver
@@ -239,7 +260,56 @@ impl Tracker {
         Ok(())
     }
 
-    fn flush_current(&mut self) -> Result<(), String> {
+    /// Seconds past the idle threshold the user has been inactive, or `None` if
+    /// they are active, idle detection is off, or a fullscreen window (video,
+    /// game) is in front — watching something without touching input is not idle.
+    fn idle_excess_seconds(&self) -> Option<i64> {
+        let timeout = self
+            .settings
+            .lock()
+            .map(|settings| settings.idle_timeout_seconds)
+            .unwrap_or(0);
+        if timeout == 0 {
+            return None;
+        }
+
+        let idle = system_idle_seconds()?;
+        if idle < timeout || foreground_is_fullscreen() {
+            return None;
+        }
+        Some((idle - timeout) as i64)
+    }
+
+    /// Writes the running session so far and restarts it from `now`, keeping the
+    /// same app. Adjacent rows are merged in `db::log_session`.
+    fn checkpoint_if_due(&mut self, now: DateTime<Local>) -> Result<(), String> {
+        let Some(start) = self.session_start else {
+            return Ok(());
+        };
+        if now.timestamp() - start.timestamp() < CHECKPOINT_SECONDS {
+            return Ok(());
+        }
+        let Some(app_name) = self.current_app.clone() else {
+            return Ok(());
+        };
+
+        let connection = self.db.lock().map_err(|err| err.to_string())?;
+        db::log_session(
+            &connection,
+            self.current_identity.as_deref(),
+            self.current_exe_name.as_deref(),
+            &app_name,
+            start,
+            now,
+        )
+        .map_err(|err| err.to_string())?;
+        drop(connection);
+
+        self.session_start = Some(now);
+        Ok(())
+    }
+
+    fn flush_current_at(&mut self, end: DateTime<Local>) -> Result<(), String> {
         let Some(app_name) = self.current_app.clone() else {
             self.current_identity = None;
             self.current_exe_name = None;
@@ -253,7 +323,6 @@ impl Tracker {
             return Ok(());
         };
 
-        let end = Local::now();
         let connection = self.db.lock().map_err(|err| err.to_string())?;
         db::log_session(
             &connection,
@@ -654,6 +723,38 @@ fn process_exe_path(process_id: u32) -> Option<String> {
     }
 
     Some(String::from_utf16_lossy(&buffer[..size as usize]))
+}
+
+fn system_idle_seconds() -> Option<u64> {
+    let mut info = LASTINPUTINFO {
+        cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32,
+        dwTime: 0,
+    };
+
+    let ok = unsafe { GetLastInputInfo(&mut info) }.as_bool();
+    if !ok {
+        return None;
+    }
+
+    let now = unsafe { GetTickCount() };
+    Some((now.wrapping_sub(info.dwTime) / 1000) as u64)
+}
+
+fn foreground_is_fullscreen() -> bool {
+    let Some(area) = active_monitor_area() else {
+        return false;
+    };
+
+    let hwnd = unsafe { GetForegroundWindow() };
+    let mut rect = RECT::default();
+    if unsafe { GetWindowRect(hwnd, &mut rect) }.is_err() {
+        return false;
+    }
+
+    rect.left <= area.monitor.left
+        && rect.top <= area.monitor.top
+        && rect.right >= area.monitor.right
+        && rect.bottom >= area.monitor.bottom
 }
 
 struct MonitorArea {

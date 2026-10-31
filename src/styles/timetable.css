@@ -1,0 +1,201 @@
+.page--grid {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tt {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.tt__head {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: grid;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+
+.tt__day {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.tt__day:hover {
+  background: var(--hover);
+}
+
+.tt__day strong {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.tt__day.is-today strong {
+  color: var(--accent);
+}
+
+.tt__body {
+  position: relative;
+  display: grid;
+}
+
+.tt__axis {
+  position: relative;
+}
+
+.tt__hour {
+  padding: 3px 8px 0 0;
+  text-align: right;
+}
+
+.tt__col {
+  position: relative;
+  border-left: 1px solid var(--border);
+  background-image: linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-repeat: repeat-y;
+  cursor: cell;
+}
+
+.tt__col.is-today {
+  background-color: var(--accent-soft);
+  background-blend-mode: normal;
+}
+
+.tt__block {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding: 3px 7px;
+  overflow: hidden;
+  border: 0;
+  border-left: 3px solid var(--accent);
+  border-radius: 5px;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  transition: filter 140ms var(--ease), transform 140ms var(--ease);
+}
+
+.tt__block:hover {
+  filter: brightness(1.15);
+  z-index: 3;
+}
+
+.tt__block.is-done {
+  opacity: 0.55;
+}
+
+.tt__btitle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tt__btime {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+.tt__bicons {
+  display: flex;
+  gap: 4px;
+  margin-top: auto;
+  color: var(--text-dim);
+}
+
+.tt__now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  height: 2px;
+  background: var(--danger);
+  pointer-events: none;
+}
+
+.tt__now::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+/* Entry editor + occurrence sheet ----------------------------------------- */
+
+.dot-swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: transform 140ms var(--ease);
+}
+
+.dot-swatch:hover {
+  transform: scale(1.1);
+}
+
+.dot-swatch.is-active {
+  border-color: var(--text);
+  outline: 2px solid var(--bg);
+  outline-offset: -4px;
+}
+
+.sheet {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.sheet__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  font-size: 14px;
+  transition: background 140ms var(--ease), border-color 140ms var(--ease);
+}
+
+.sheet__item:hover:not(:disabled) {
+  background: var(--hover);
+  border-color: var(--border-strong);
+}
+
+.sheet__item:disabled {
+  opacity: 0.5;
+}
+
+.sheet__item--danger {
+  color: var(--danger);
+}

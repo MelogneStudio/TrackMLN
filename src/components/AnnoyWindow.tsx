@@ -149,7 +149,7 @@ export function AnnoyWindow() {
   return (
     <main className="annoy-shell">
       <div className="annoy-shell__flash" key={instanceKey} />
-      <section className="annoy-screen glass-card">
+      <section className="annoy-screen">
         <span className="annoy-screen__kicker">Annoy</span>
 
         <h1>{msg.heading(alert.label)}</h1>
@@ -164,7 +164,7 @@ export function AnnoyWindow() {
 
         <div className="annoy-screen__actions">
           <button
-            className="settings-button settings-button--accent"
+            className="btn btn--accent btn--lg"
             disabled={busy || !snoozeReady}
             onClick={() => void snooze()}
             onMouseEnter={() => { if (!drifted && snoozeCount > 0) setDrifted(true); }}
