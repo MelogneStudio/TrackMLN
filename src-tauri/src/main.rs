@@ -3,6 +3,7 @@
 mod app_names;
 mod commands;
 mod db;
+mod focus;
 mod models;
 mod recurrence;
 mod settings;
