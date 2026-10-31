@@ -1,0 +1,106 @@
+/* The overlay is a see-through panel: the window itself has an acrylic backdrop,
+   this layer only adds a light tint so text stays readable on any wallpaper. */
+.ov {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--sidebar-border);
+  background: var(--overlay-bg);
+  overflow: hidden;
+  animation: pop-in 180ms var(--ease);
+}
+
+.ov__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ov__hello {
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.ov__date {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.ov__grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: 12px;
+}
+
+.ov__col {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ov__card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px 14px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid var(--sidebar-border);
+  background: rgb(var(--bg-rgb) / 0.42);
+}
+
+.ov__title {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 19px;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
+.ov__title:hover {
+  color: var(--text);
+}
+
+.ov__big {
+  font-size: 38px;
+}
+
+.ov__chart {
+  margin-top: 2px;
+}
+
+.ov__apps {
+  margin-top: auto;
+}
+
+.ov .focus-mini__clock {
+  font-size: 40px;
+}
+
+.ov .focus-mini__ring .ring {
+  width: 72px !important;
+  height: 72px !important;
+}
+
+.ov .focus-mini__ring svg {
+  width: 72px;
+  height: 72px;
+}
+
+.ov .select__trigger {
+  height: 34px;
+}
