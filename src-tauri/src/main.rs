@@ -4,6 +4,7 @@ mod app_names;
 mod commands;
 mod db;
 mod focus;
+mod focus_store;
 mod models;
 mod recurrence;
 mod settings;
@@ -36,6 +37,7 @@ pub struct AppState {
     pub app_name_resolver: Arc<Mutex<AppNameResolver>>,
     pub limit_runtime: Arc<Mutex<tracker::LimitRuntime>>,
     pub pending_alerts: Arc<Mutex<std::collections::HashMap<String, GoalAlertPayload>>>,
+    pub focus: Arc<Mutex<focus::FocusEngine>>,
 }
 
 fn main() {
@@ -65,6 +67,18 @@ fn main() {
             timetable::schedule_todo_block,
             timetable::unschedule_todo_blocks,
             timetable::get_free_slots,
+            focus_store::get_focus_presets,
+            focus_store::save_focus_preset,
+            focus_store::delete_focus_preset,
+            focus_store::get_focus_state,
+            focus_store::start_focus,
+            focus_store::pause_focus,
+            focus_store::resume_focus,
+            focus_store::skip_focus_phase,
+            focus_store::stop_focus,
+            focus_store::add_focus_time,
+            focus_store::get_focus_stats,
+            focus_store::get_focus_history,
             commands::get_goals,
             commands::get_goal_candidates,
             commands::get_settings,
@@ -127,6 +141,7 @@ fn main() {
                 app_name_resolver: resolver.clone(),
                 limit_runtime: limit_runtime.clone(),
                 pending_alerts: pending_alerts.clone(),
+                focus: Arc::new(Mutex::new(focus::FocusEngine::default())),
             });
             // Hide before applying glass effects — vibrancy calls briefly force
             // the window visible via DWM compositor redraw on Windows
