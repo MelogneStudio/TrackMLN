@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Duration, Local, LocalResult, NaiveDate, TimeZone};
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::models::{AppTotal, Goal, GoalCandidate, GoalDraft, HourlyData, WeekData, WeekDay};
 
@@ -22,6 +22,13 @@ pub fn open_shared_database(path: impl AsRef<Path>) -> Result<SharedDb, String> 
     }
 
     let connection = Connection::open(path).map_err(|err| err.to_string())?;
+    // WAL + NORMAL sync survives a crash or power cut without losing committed
+    // rows, and the busy timeout stops brief lock contention from erroring out.
+    connection
+        .execute_batch(
+            "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000;",
+        )
+        .map_err(|err| err.to_string())?;
     init_schema(&connection).map_err(|err| err.to_string())?;
     Ok(Arc::new(Mutex::new(connection)))
 }
@@ -57,6 +64,13 @@ pub fn init_schema(connection: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
+/// Rows for the same app that touch within this many seconds are merged, so the
+/// periodic heartbeat flush does not litter the table with one-minute rows.
+const MERGE_GAP_SECONDS: i64 = 2;
+
+/// Writes a usage session. Sessions that cross local midnight are split so each
+/// stored row belongs to exactly one calendar day, which keeps every per-day
+/// query (`date(start, 'localtime')`) correct.
 pub fn log_session(
     connection: &Connection,
     app_identity: Option<&str>,
@@ -65,16 +79,86 @@ pub fn log_session(
     start: DateTime<Local>,
     end: DateTime<Local>,
 ) -> rusqlite::Result<()> {
-    let duration = end.timestamp() - start.timestamp();
-    if duration < 1 {
+    let end_ts = end.timestamp();
+    let mut cursor = start.timestamp();
+    if end_ts - cursor < 1 {
         return Ok(());
+    }
+
+    while cursor < end_ts {
+        let segment_end = end_ts.min(next_local_midnight(cursor));
+        write_segment(connection, app_identity, exe_name, app_name, cursor, segment_end)?;
+        cursor = segment_end;
+    }
+    Ok(())
+}
+
+fn write_segment(
+    connection: &Connection,
+    app_identity: Option<&str>,
+    exe_name: Option<&str>,
+    app_name: &str,
+    start: i64,
+    end: i64,
+) -> rusqlite::Result<()> {
+    let last = connection
+        .query_row(
+            "SELECT id, app_identity, app_name, end FROM sessions ORDER BY id DESC LIMIT 1",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, Option<String>>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, i64>(3)?,
+                ))
+            },
+        )
+        .optional()?;
+
+    if let Some((id, last_identity, last_name, last_end)) = last {
+        let same_app = match (app_identity, last_identity.as_deref()) {
+            (Some(current), Some(previous)) => current == previous,
+            (None, None) => last_name == app_name,
+            _ => false,
+        };
+        let touching = start >= last_end && start - last_end <= MERGE_GAP_SECONDS;
+        // Never extend a row across midnight.
+        let same_day = next_local_midnight(last_end - 1) >= end;
+
+        if same_app && touching && same_day {
+            connection.execute("UPDATE sessions SET end = ?1 WHERE id = ?2", params![end, id])?;
+            return Ok(());
+        }
     }
 
     connection.execute(
         "INSERT INTO sessions (app_identity, exe_name, app_name, start, end) VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![app_identity, exe_name, app_name, start.timestamp(), end.timestamp()],
+        params![app_identity, exe_name, app_name, start, end],
     )?;
     Ok(())
+}
+
+/// Unix timestamp of the first local midnight strictly after `timestamp`.
+pub fn next_local_midnight(timestamp: i64) -> i64 {
+    let fallback = timestamp + 86_400;
+    let Some(utc) = DateTime::from_timestamp(timestamp, 0) else {
+        return fallback;
+    };
+    let Some(next_day) = utc.with_timezone(&Local).date_naive().succ_opt() else {
+        return fallback;
+    };
+    let naive = next_day.and_hms_opt(0, 0, 0).expect("midnight is a valid time");
+    let boundary = match Local.from_local_datetime(&naive) {
+        LocalResult::Single(dt) => dt.timestamp(),
+        LocalResult::Ambiguous(dt, _) => dt.timestamp(),
+        LocalResult::None => fallback,
+    };
+    if boundary > timestamp {
+        boundary
+    } else {
+        fallback
+    }
 }
 
 fn ensure_column(
@@ -517,6 +601,56 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM sessions", [], |row| row.get(0))
             .expect("count rows");
         assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn splits_sessions_that_cross_midnight() {
+        let connection = test_connection();
+        let today = Local::now().date_naive();
+        let yesterday = today - Duration::days(1);
+        let start = unix_to_local(local_date_to_unix(yesterday, 23, 0, 0)).unwrap();
+        let end = unix_to_local(local_date_to_unix(today, 1, 0, 0)).unwrap();
+
+        log_session(&connection, None, None, "Game", start, end).expect("session write");
+
+        let mut statement = connection
+            .prepare(
+                "SELECT date(start, 'unixepoch', 'localtime'), SUM(end - start)
+                 FROM sessions GROUP BY 1 ORDER BY 1",
+            )
+            .expect("prepare");
+        let rows: Vec<(String, i64)> = statement
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .expect("query")
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .expect("rows");
+
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].0, yesterday.to_string());
+        assert_eq!(rows[1].0, today.to_string());
+        assert_eq!(rows[0].1 + rows[1].1, end.timestamp() - start.timestamp());
+    }
+
+    #[test]
+    fn merges_back_to_back_sessions_for_the_same_app() {
+        let connection = test_connection();
+        let today = Local::now().date_naive();
+        let t = |h, m, s| unix_to_local(local_date_to_unix(today, h, m, s)).unwrap();
+
+        log_session(&connection, Some("chrome"), None, "Chrome", t(9, 0, 0), t(9, 1, 0)).unwrap();
+        log_session(&connection, Some("chrome"), None, "Chrome", t(9, 1, 0), t(9, 2, 0)).unwrap();
+        log_session(&connection, Some("code"), None, "Code", t(9, 2, 0), t(9, 3, 0)).unwrap();
+        log_session(&connection, Some("chrome"), None, "Chrome", t(9, 3, 0), t(9, 4, 0)).unwrap();
+
+        let count: i64 = connection
+            .query_row("SELECT COUNT(*) FROM sessions", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 3);
+
+        let first_end: i64 = connection
+            .query_row("SELECT end FROM sessions ORDER BY id ASC LIMIT 1", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(first_end, t(9, 2, 0).timestamp());
     }
 
     #[test]
