@@ -111,10 +111,13 @@ fn main() {
                 .path()
                 .app_data_dir()
                 .expect("failed to resolve app data dir");
+            println!("[DEBUG] app_data_dir = {:?}", data_dir);
             let db = open_shared_database(default_db_path(&data_dir))
                 .expect("failed to initialize database");
             let settings_path = default_settings_path(&data_dir);
+            println!("[DEBUG] settings_path = {:?}", settings_path);
             let mut settings = load_settings(&settings_path).expect("failed to load settings");
+            println!("[DEBUG] Loaded settings ui_prefs: {}", settings.ui_prefs);
             let settings_state = Arc::new(Mutex::new(settings.clone()));
             let resolver = Arc::new(Mutex::new(
                 AppNameResolver::new(default_cache_path(&data_dir), settings.exe_labels.clone())

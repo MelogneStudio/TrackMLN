@@ -165,8 +165,9 @@ pub fn get_settings(state: State<AppState>) -> Result<AppSettings, String> {
         println!("[DEBUG] {}", e);
         e
     })?;
-    println!("[DEBUG] settings loaded: onboardingDone = {}",
-        serde_json::to_string(&settings.ui_prefs).unwrap_or_default());
+    let ui_prefs_str = serde_json::to_string(&settings.ui_prefs).unwrap_or_default();
+    println!("[DEBUG] settings loaded: ui_prefs = {}", ui_prefs_str);
+    println!("[DEBUG] settings_path = {:?}", state.settings_path);
     Ok(settings.clone())
 }
 
@@ -230,10 +231,17 @@ pub fn set_ui_prefs(app: AppHandle, state: State<AppState>, prefs: String) -> Re
         return Err("Preferences are too large".into());
     }
     println!("[DEBUG] set_ui_prefs called with: {}", prefs);
+    println!("[DEBUG] settings_path = {:?}", state.settings_path);
     let mut settings_value = state.settings.lock().map_err(|err| err.to_string())?;
     settings_value.ui_prefs = prefs.clone();
     match settings::save_settings(&state.settings_path, &settings_value) {
-        Ok(_) => println!("[DEBUG] settings successfully saved to disk: {:?}", state.settings_path),
+        Ok(_) => {
+            println!("[DEBUG] settings successfully saved to disk: {:?}", state.settings_path);
+            // Verify the file was actually written
+            if let Ok(content) = std::fs::read_to_string(&state.settings_path) {
+                println!("[DEBUG] Verified file content: {}", content);
+            }
+        }
         Err(e) => println!("[DEBUG] settings save FAILED: {}", e),
     }
     let _ = app.emit("ui-prefs-changed", prefs);
