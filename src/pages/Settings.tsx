@@ -239,9 +239,9 @@ export function Settings() {
               Replay setup
             </button>
           </Row>
-          <Row label="TrackMLN v1.2.2" hint="A Melogne Studio app.">
+          <Row label="TrackMLN v3.0.0" hint="A Melogne Studio app.">
             <button className="btn btn--danger" type="button" onClick={() => void call("quit_app")}>
-              <Icon name="power" size={16} /> Quit TrackMLN
+              <Icon name="power" size={16} /> Quit TrackMLN v3.0.0
             </button>
           </Row>
         </Section>

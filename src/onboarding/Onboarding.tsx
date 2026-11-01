@@ -84,8 +84,8 @@ export function Onboarding() {
     };
   }, []);
 
-  const finish = () => update({ onboardingDone: true });
-  const skip = () => update({ onboardingDone: true });
+  const finish = () => update({ onboardingDone: true }, true);
+  const skip = () => update({ onboardingDone: true }, true);
 
   const commitNickname = () => {
     update({ nickname: nickname.trim() });

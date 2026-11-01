@@ -95,24 +95,21 @@ export default function App() {
 
         {/* Body */}
         <div className="body">
-          {/* Left: info column */}
-          <aside className="info-col">
-            <h1>TrackMLN</h1>
-            <p>The same glassy desktop feel, now as a one-click installer.</p>
-            <ul className="checklist">
-              <li>Copies app to <code>%APPDATA%</code></li>
-              <li>Start Menu shortcut</li>
-              <li>Runs on Windows startup</li>
-              <li>Launches immediately</li>
-            </ul>
-          </aside>
-
-          {/* Right: action column */}
           <section className="action-col">
             <div className="action-col__header">
               <span className="eyebrow">Ready to install</span>
-              <h2>Install TrackMLN</h2>
+              <h2 style={{ fontSize: '32px', marginBottom: '8px' }}>TrackMLN</h2>
               <p>A quick local copy and registration — no network required.</p>
+            </div>
+
+            <div className="info-col" style={{ marginBottom: '20px' }}>
+              <p>The same glassy desktop feel, now as a one-click installer.</p>
+              <ul className="checklist">
+                <li>Copies app to <code className="path-field" style={{ display: 'inline', padding: '2px 4px', borderRadius: '4px' }}>%APPDATA%</code></li>
+                <li>Start Menu shortcut</li>
+                <li>Runs on Windows startup</li>
+                <li>Launches immediately</li>
+              </ul>
             </div>
 
             {/* Destination tile */}
@@ -135,11 +132,11 @@ export default function App() {
             <div className="meta-row">
               <div className="tile tile--meta">
                 <span className="eyebrow">Shortcut</span>
-                <strong>Start Menu</strong>
+                <strong style={{ fontSize: '15px' }}>Start Menu</strong>
               </div>
               <div className="tile tile--meta">
                 <span className="eyebrow">Startup</span>
-                <strong>Current user</strong>
+                <strong style={{ fontSize: '15px' }}>Current user</strong>
               </div>
             </div>
 
@@ -150,7 +147,7 @@ export default function App() {
                 onChange={(e) => setDeleteInstaller(e.target.checked)}
                 type="checkbox"
               />
-              <span>Delete installer after finishing</span>
+              <span style={{ fontSize: '14px' }}>Delete installer after finishing</span>
             </label>
 
             {/* CTA */}
@@ -160,13 +157,14 @@ export default function App() {
                 disabled={status === "installing"}
                 onClick={handleInstall}
                 type="button"
+                style={{ width: '100%', fontSize: '16px', padding: '16px' }}
               >
                 {status === "installing" ? "Installing…" : "Install now"}
               </button>
 
               {status === "error" && error && (
                 <div className="status-panel status-panel--error">
-                  <strong>Installation failed.</strong>
+                  <strong style={{ display: 'block', marginBottom: '4px' }}>Installation failed.</strong>
                   <p>{error}</p>
                 </div>
               )}
@@ -174,8 +172,8 @@ export default function App() {
 
             {status === "done" && result && (
               <div className="status-panel status-panel--success">
-                <strong>Installation complete.</strong>
-                <p>TrackMLN launched from <code>{result.installedExe}</code>.</p>
+                <strong style={{ display: 'block', marginBottom: '4px' }}>Installation complete.</strong>
+                <p>TrackMLN launched from <code style={{ color: '#fff' }}>{result.installedExe}</code>.</p>
                 <p>{result.selfDeleteScheduled
                   ? "Installer will close and remove itself."
                   : "Installer kept (self-delete is off)."}</p>

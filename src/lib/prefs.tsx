@@ -59,7 +59,7 @@ type PrefsContextValue = {
   loaded: boolean;
   settings: AppSettings | null;
   setSettings: (settings: AppSettings) => void;
-  update: (patch: Partial<Prefs>) => void;
+  update: (patch: Partial<Prefs>, immediate?: boolean) => void;
 };
 
 const PrefsContext = createContext<PrefsContextValue | null>(null);
@@ -114,7 +114,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     void call("set_chrome_dark", { dark: theme.mode === "dark" }).catch(() => undefined);
   }, [prefs.theme, prefs.sidebarTranslucency]);
 
-  const update = useCallback((patch: Partial<Prefs>) => {
+  const update = useCallback((patch: Partial<Prefs>, immediate = false) => {
     const next = { ...latest.current, ...patch };
     latest.current = next;
     setPrefs(next);
@@ -122,14 +122,21 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     if (saveTimer.current !== null) {
       window.clearTimeout(saveTimer.current);
     }
-    saveTimer.current = window.setTimeout(() => {
+
+    const save = () => {
       const payload = JSON.stringify(latest.current);
       if (sent.current.size > 40) sent.current.clear();
       sent.current.add(payload);
       call<AppSettings>("set_ui_prefs", { prefs: payload })
         .then((value) => setSettings(value))
         .catch((error) => console.error("Failed to save preferences", error));
-    }, 220);
+    };
+
+    if (immediate) {
+      save();
+    } else {
+      saveTimer.current = window.setTimeout(save, 220);
+    }
   }, []);
 
   const value = useMemo(

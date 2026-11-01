@@ -159,19 +159,20 @@ pub fn set_warn_clickthrough(app: AppHandle, clickthrough: bool) -> Result<(), S
 
 #[tauri::command]
 pub fn get_settings(state: State<AppState>) -> Result<AppSettings, String> {
-    let settings = state.settings.lock().map_err(|err| err.to_string())?;
+    println!("[DEBUG] get_settings called");
+    let settings = state.settings.lock().map_err(|err| {
+        let e = format!("Failed to lock settings: {}", err);
+        println!("[DEBUG] {}", e);
+        e
+    })?;
+    println!("[DEBUG] settings loaded: onboardingDone = {}",
+        serde_json::to_string(&settings.ui_prefs).unwrap_or_default());
     Ok(settings.clone())
 }
 
 #[tauri::command]
 pub fn get_storage_location(state: State<AppState>) -> Result<String, String> {
-    let location = state
-        .settings_path
-        .parent()
-        .unwrap_or(state.settings_path.as_path())
-        .to_string_lossy()
-        .into_owned();
-    Ok(location)
+    Ok(state.settings_path.to_string_lossy().into_owned())
 }
 
 #[tauri::command]
@@ -228,9 +229,13 @@ pub fn set_ui_prefs(app: AppHandle, state: State<AppState>, prefs: String) -> Re
     if prefs.len() > settings::MAX_UI_PREFS_BYTES {
         return Err("Preferences are too large".into());
     }
+    println!("[DEBUG] set_ui_prefs called with: {}", prefs);
     let mut settings_value = state.settings.lock().map_err(|err| err.to_string())?;
     settings_value.ui_prefs = prefs.clone();
-    settings::save_settings(&state.settings_path, &settings_value)?;
+    match settings::save_settings(&state.settings_path, &settings_value) {
+        Ok(_) => println!("[DEBUG] settings successfully saved to disk: {:?}", state.settings_path),
+        Err(e) => println!("[DEBUG] settings save FAILED: {}", e),
+    }
     let _ = app.emit("ui-prefs-changed", prefs);
     Ok(settings_value.clone())
 }
