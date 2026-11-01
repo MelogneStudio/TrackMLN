@@ -25,8 +25,10 @@ use std::sync::{Arc, Mutex};
 use tauri::{
     Emitter,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewWindow, Window, WindowEvent,
+    AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
+use windows_core::Interface;
+
 
 #[cfg(desktop)]
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
@@ -128,18 +130,6 @@ fn main() {
             let tracker_db = db.clone();
             let scheduler_db = db.clone();
             let focus_engine = Arc::new(Mutex::new(focus::FocusEngine::default()));
-            let main_window = app
-                .get_webview_window("main")
-                .expect("main window should exist");
-            let warn_window = app
-                .get_webview_window("warn")
-                .expect("warn window should exist");
-            let annoy_window = app
-                .get_webview_window("annoy")
-                .expect("annoy window should exist");
-            let overlay_window = app
-                .get_webview_window("overlay")
-                .expect("overlay window should exist");
 
             #[cfg(desktop)]
             {
@@ -158,6 +148,17 @@ fn main() {
                 pending_alerts: pending_alerts.clone(),
                 focus: focus_engine.clone(),
             });
+
+            // Create windows from config AFTER state is managed, so state exists before any JS runs
+            let main_window = WebviewWindowBuilder::from_config(app, &app.config().app.windows.iter().find(|w| w.label == "main").cloned().expect("main window config"))?
+                .build()?;
+            let overlay_window = WebviewWindowBuilder::from_config(app, &app.config().app.windows.iter().find(|w| w.label == "overlay").cloned().expect("overlay window config"))?
+                .build()?;
+            let warn_window = WebviewWindowBuilder::from_config(app, &app.config().app.windows.iter().find(|w| w.label == "warn").cloned().expect("warn window config"))?
+                .build()?;
+            let annoy_window = WebviewWindowBuilder::from_config(app, &app.config().app.windows.iter().find(|w| w.label == "annoy").cloned().expect("annoy window config"))?
+                .build()?;
+
             // Hide before applying glass effects — vibrancy calls briefly force
             // the window visible via DWM compositor redraw on Windows
             let _ = main_window.hide();
@@ -168,6 +169,21 @@ fn main() {
             apply_window_glass(&overlay_window);
             apply_window_glass(&warn_window);
             apply_window_glass(&annoy_window);
+
+            // Enable WebView2 DevTools for debugging
+            let windows = [&main_window, &overlay_window, &warn_window, &annoy_window];
+            for window in windows {
+                let _ = window.with_webview(|webview| {
+                    unsafe {
+                        if let Ok(controller) = webview.controller().cast::<webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Controller>() {
+                            if let Ok(settings) = controller.cast::<webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings>() {
+                                let _ = settings.SetAreDevToolsEnabled(true);
+                            }
+                        }
+                    }
+                });
+            }
+
             {
                 let app_handle = app.handle().clone();
                 std::thread::spawn(move || {
