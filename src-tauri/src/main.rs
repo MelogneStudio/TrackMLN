@@ -27,6 +27,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
+use serde_json::Value;
 use windows_core::Interface;
 
 
@@ -159,9 +160,23 @@ fn main() {
             let annoy_window = WebviewWindowBuilder::from_config(app, &app.config().app.windows.iter().find(|w| w.label == "annoy").cloned().expect("annoy window config"))?
                 .build()?;
 
+            // Check if onboarding is done by parsing ui_prefs
+            let onboarding_done = settings.ui_prefs
+                .parse::<Value>()
+                .ok()
+                .and_then(|v| v.get("onboardingDone").and_then(|v| v.as_bool()))
+                .unwrap_or(false);
+
             // Hide before applying glass effects — vibrancy calls briefly force
             // the window visible via DWM compositor redraw on Windows
-            let _ = main_window.hide();
+            // But if onboarding is not done, show the main window so user can complete setup
+            if onboarding_done {
+                let _ = main_window.hide();
+            } else {
+                let _ = main_window.show();
+                let _ = main_window.center();
+                let _ = main_window.set_focus();
+            }
             let _ = overlay_window.hide();
             let _ = warn_window.hide();
             let _ = annoy_window.hide();
