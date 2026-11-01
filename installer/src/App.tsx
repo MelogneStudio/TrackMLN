@@ -2,6 +2,7 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import installerConfig from "./installer-config.json";
+import { Icon } from "./ui/Icon";
 
 type InstallResult = {
   installDir: string;
@@ -88,32 +89,34 @@ export default function App() {
             <strong className="titlebar__title">Installer</strong>
           </div>
           <div className="titlebar__actions" onMouseDown={(e) => e.stopPropagation()}>
-            <button onClick={() => void handleWindowAction("minimize")} type="button" aria-label="Minimize">─</button>
-            <button onClick={() => void handleWindowAction("close")} type="button" aria-label="Close" className="btn-close">✕</button>
+            <button onClick={() => void handleWindowAction("minimize")} type="button" aria-label="Minimize">
+              <Icon name="minus" size={16} strokeWidth={1.3} />
+            </button>
+            <button onClick={() => void handleWindowAction("close")} type="button" aria-label="Close" className="btn-close">
+              <Icon name="x" size={16} strokeWidth={1.3} />
+            </button>
           </div>
         </header>
 
         {/* Body */}
         <div className="body">
-          <section className="action-col">
-            <div className="action-col__header">
+          <div className="content">
+            {/* Header */}
+            <div className="install-header">
               <span className="eyebrow">Ready to install</span>
-              <h2 style={{ fontSize: '32px', marginBottom: '8px' }}>TrackMLN</h2>
+              <h1>TrackMLN</h1>
               <p>A quick local copy and registration — no network required.</p>
-            </div>
 
-            <div className="info-col" style={{ marginBottom: '20px' }}>
-              <p>The same glassy desktop feel, now as a one-click installer.</p>
               <ul className="checklist">
-                <li>Copies app to <code className="path-field" style={{ display: 'inline', padding: '2px 4px', borderRadius: '4px' }}>%APPDATA%</code></li>
-                <li>Start Menu shortcut</li>
-                <li>Runs on Windows startup</li>
-                <li>Launches immediately</li>
+                <li>Copies app to <code>%APPDATA%</code></li>
+                <li>Creates Start Menu shortcut</li>
+                <li>Runs on Windows startup (current user)</li>
+                <li>Launches immediately after install</li>
               </ul>
             </div>
 
             {/* Destination tile */}
-            <div className="tile tile--dest">
+            <div className="tile">
               <span className="eyebrow">Destination</span>
               <div className="path-row">
                 <textarea
@@ -121,22 +124,22 @@ export default function App() {
                   className="path-field"
                   onFocus={(e) => e.currentTarget.select()}
                   readOnly
-                  rows={2}
+                  rows={1}
                   value={installPath}
                 />
                 <button className="btn-copy" onClick={() => void copyInstallPath()} type="button">Copy</button>
               </div>
             </div>
 
-            {/* Small meta tiles */}
+            {/* Meta tiles */}
             <div className="meta-row">
-              <div className="tile tile--meta">
+              <div className="tile">
                 <span className="eyebrow">Shortcut</span>
-                <strong style={{ fontSize: '15px' }}>Start Menu</strong>
+                <strong>Start Menu</strong>
               </div>
-              <div className="tile tile--meta">
+              <div className="tile">
                 <span className="eyebrow">Startup</span>
-                <strong style={{ fontSize: '15px' }}>Current user</strong>
+                <strong>Current user</strong>
               </div>
             </div>
 
@@ -149,37 +152,38 @@ export default function App() {
               />
               <span style={{ fontSize: '14px' }}>Delete installer after finishing</span>
             </label>
+          </div>
 
-            {/* CTA */}
+          {/* Footer with CTA */}
+          <footer className="footer">
             <div className="cta-row">
               <button
                 className="btn-install"
                 disabled={status === "installing"}
                 onClick={handleInstall}
                 type="button"
-                style={{ width: '100%', fontSize: '16px', padding: '16px' }}
               >
                 {status === "installing" ? "Installing…" : "Install now"}
               </button>
 
               {status === "error" && error && (
                 <div className="status-panel status-panel--error">
-                  <strong style={{ display: 'block', marginBottom: '4px' }}>Installation failed.</strong>
+                  <strong>Installation failed.</strong>
                   <p>{error}</p>
                 </div>
               )}
-            </div>
 
-            {status === "done" && result && (
-              <div className="status-panel status-panel--success">
-                <strong style={{ display: 'block', marginBottom: '4px' }}>Installation complete.</strong>
-                <p>TrackMLN launched from <code style={{ color: '#fff' }}>{result.installedExe}</code>.</p>
-                <p>{result.selfDeleteScheduled
-                  ? "Installer will close and remove itself."
-                  : "Installer kept (self-delete is off)."}</p>
-              </div>
-            )}
-          </section>
+              {status === "done" && result && (
+                <div className="status-panel status-panel--success">
+                  <strong>Installation complete.</strong>
+                  <p>TrackMLN launched from <code>{result.installedExe}</code>.</p>
+                  <p>{result.selfDeleteScheduled
+                    ? "Installer will close and remove itself."
+                    : "Installer kept (self-delete is off)."}</p>
+                </div>
+              )}
+            </div>
+          </footer>
         </div>
       </section>
     </main>

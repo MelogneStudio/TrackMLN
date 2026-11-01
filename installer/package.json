@@ -4,15 +4,18 @@
   "version": "1.2.2",
   "type": "module",
   "scripts": {
-    "dev": "..\\node_modules\\.bin\\vite.cmd",
-    "build": "..\\node_modules\\.bin\\tsc.cmd && ..\\node_modules\\.bin\\vite.cmd build",
-    "preview": "..\\node_modules\\.bin\\vite.cmd preview",
-    "tauri:dev": "..\\node_modules\\.bin\\tauri.cmd dev",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri:dev": "tauri dev",
     "pretauri:build": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$source = Join-Path .. 'src-tauri\\target\\release\\trackmln-tauri.exe'; $payloadRoot = Join-Path 'src-tauri\\assets' 'app'; $dest = Join-Path $payloadRoot 'TrackMLN.exe'; if (-not (Test-Path $source)) { throw 'Missing main app release binary. Build the main app release first.' }; New-Item -ItemType Directory -Path $payloadRoot -Force | Out-Null; Copy-Item -LiteralPath $source -Destination $dest -Force\"",
-    "tauri:build": "..\\node_modules\\.bin\\tauri.cmd build"
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
+    "@fontsource/khand": "^5.1.0",
+    "@fontsource/dm-sans": "^5.1.0",
+    "@fontsource/jetbrains-mono": "^5.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -20,8 +23,8 @@
     "@tauri-apps/cli": "^2.0.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^6.1.2",
     "typescript": "^5.6.3",
-    "vite": "^5.4.10"
+    "vite": "^8.3.5"
   }
 }
