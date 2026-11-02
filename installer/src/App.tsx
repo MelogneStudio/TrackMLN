@@ -2,6 +2,8 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import installerConfig from "./installer-config.json";
+import { Icon } from "./ui/Icon";
+const trackmlnLogo = new URL("../../assets/trackmln.svg", import.meta.url).href;
 
 type InstallResult = {
   installDir: string;
@@ -74,112 +76,96 @@ export default function App() {
 
   return (
     <main className="shell">
-      <div className="shell__backdrop" />
-
       <section className="window">
-        {/* Titlebar */}
         <header
           className="titlebar"
           data-tauri-drag-region
           onMouseDown={() => void handleDragStart()}
         >
-          <div className="titlebar__brand">
-            <span className="eyebrow">TrackMLN setup · {versionLabel}</span>
-            <strong className="titlebar__title">Installer</strong>
+          <div className="titlebar__brand" data-tauri-drag-region>
+            <img src={trackmlnLogo} alt="" />
+            <strong>TrackMLN</strong>
           </div>
           <div className="titlebar__actions" onMouseDown={(e) => e.stopPropagation()}>
-            <button onClick={() => void handleWindowAction("minimize")} type="button" aria-label="Minimize">─</button>
-            <button onClick={() => void handleWindowAction("close")} type="button" aria-label="Close" className="btn-close">✕</button>
+            <button onClick={() => void handleWindowAction("minimize")} type="button" aria-label="Minimize">
+              <Icon name="minus" size={16} strokeWidth={1.3} />
+            </button>
+            <button onClick={() => void handleWindowAction("close")} type="button" aria-label="Close" className="btn-close">
+              <Icon name="x" size={16} strokeWidth={1.3} />
+            </button>
           </div>
         </header>
 
-        {/* Body */}
         <div className="body">
-          <section className="action-col">
-            <div className="action-col__header">
+          <div className="content">
+            <div className="install-header">
+              <img className="app-mark" src={trackmlnLogo} alt="" />
               <span className="eyebrow">Ready to install</span>
-              <h2 style={{ fontSize: '32px', marginBottom: '8px' }}>TrackMLN</h2>
-              <p>A quick local copy and registration — no network required.</p>
+              <h1>TrackMLN Installation</h1>
+              <p>Quick local copy, no internet required.</p>
             </div>
 
-            <div className="info-col" style={{ marginBottom: '20px' }}>
-              <p>The same glassy desktop feel, now as a one-click installer.</p>
-              <ul className="checklist">
-                <li>Copies app to <code className="path-field" style={{ display: 'inline', padding: '2px 4px', borderRadius: '4px' }}>%APPDATA%</code></li>
-                <li>Start Menu shortcut</li>
-                <li>Runs on Windows startup</li>
-                <li>Launches immediately</li>
-              </ul>
-            </div>
-
-            {/* Destination tile */}
-            <div className="tile tile--dest">
-              <span className="eyebrow">Destination</span>
+            <div className="destination">
+              <span className="eyebrow">Install location</span>
               <div className="path-row">
                 <textarea
                   aria-label="Install destination path"
                   className="path-field"
                   onFocus={(e) => e.currentTarget.select()}
                   readOnly
-                  rows={2}
+                  rows={1}
                   value={installPath}
                 />
                 <button className="btn-copy" onClick={() => void copyInstallPath()} type="button">Copy</button>
               </div>
             </div>
 
-            {/* Small meta tiles */}
-            <div className="meta-row">
-              <div className="tile tile--meta">
-                <span className="eyebrow">Shortcut</span>
-                <strong style={{ fontSize: '15px' }}>Start Menu</strong>
-              </div>
-              <div className="tile tile--meta">
-                <span className="eyebrow">Startup</span>
-                <strong style={{ fontSize: '15px' }}>Current user</strong>
-              </div>
+            <div className="feature-row" aria-label="What the installer will do">
+              <div className="feature"><Icon name="check" size={15} /><span>Start Menu shortcut</span></div>
+              <div className="feature"><Icon name="check" size={15} /><span>Launches after install</span></div>
+              <div className="feature"><Icon name="check" size={15} /><span>Current user startup</span></div>
             </div>
 
-            {/* Option */}
             <label className="option">
               <input
                 checked={deleteInstaller}
                 onChange={(e) => setDeleteInstaller(e.target.checked)}
                 type="checkbox"
               />
-              <span style={{ fontSize: '14px' }}>Delete installer after finishing</span>
+              <span>Delete installer after finishing</span>
             </label>
+          </div>
 
-            {/* CTA */}
+          <footer className="footer">
+            <div className="footer__meta"><span>{versionLabel}</span><i /> <span>Melogne Studio</span></div>
             <div className="cta-row">
               <button
                 className="btn-install"
                 disabled={status === "installing"}
                 onClick={handleInstall}
                 type="button"
-                style={{ width: '100%', fontSize: '16px', padding: '16px' }}
               >
-                {status === "installing" ? "Installing…" : "Install now"}
+                {status === "installing" ? "Installing…" : <><span>Install</span><Icon name="arrowRight" size={17} /></>}
               </button>
 
               {status === "error" && error && (
                 <div className="status-panel status-panel--error">
-                  <strong style={{ display: 'block', marginBottom: '4px' }}>Installation failed.</strong>
+                  <strong>Installation failed.</strong>
                   <p>{error}</p>
                 </div>
               )}
-            </div>
 
-            {status === "done" && result && (
-              <div className="status-panel status-panel--success">
-                <strong style={{ display: 'block', marginBottom: '4px' }}>Installation complete.</strong>
-                <p>TrackMLN launched from <code style={{ color: '#fff' }}>{result.installedExe}</code>.</p>
-                <p>{result.selfDeleteScheduled
-                  ? "Installer will close and remove itself."
-                  : "Installer kept (self-delete is off)."}</p>
-              </div>
-            )}
-          </section>
+              {status === "done" && result && (
+                <div className="status-panel status-panel--success">
+                  <strong>Installation complete.</strong>
+                  <p>TrackMLN launched from <code>{result.installedExe}</code>.</p>
+                  <p>{result.selfDeleteScheduled
+                    ? "Installer will close and remove itself."
+                    : "Installer kept (self-delete is off)."}</p>
+                </div>
+              )}
+            </div>
+          </footer>
         </div>
       </section>
     </main>

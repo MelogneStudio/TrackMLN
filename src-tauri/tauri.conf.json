@@ -31,7 +31,8 @@
         "width": 1180,
         "height": 720,
         "minWidth": 900,
-        "minHeight": 580
+        "minHeight": 580,
+        "create": false
       },
       {
         "label": "overlay",
@@ -47,7 +48,8 @@
         "visible": false,
         "center": true,
         "width": 940,
-        "height": 560
+        "height": 560,
+        "create": false
       },
       {
         "label": "warn",
@@ -61,7 +63,8 @@
         "skipTaskbar": true,
         "visible": false,
         "width": 420,
-        "height": 260
+        "height": 260,
+        "create": false
       },
       {
         "label": "annoy",
@@ -75,7 +78,8 @@
         "skipTaskbar": true,
         "visible": false,
         "width": 1920,
-        "height": 1080
+        "height": 1080,
+        "create": false
       }
     ]
   }
