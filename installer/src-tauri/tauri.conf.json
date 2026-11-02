@@ -14,12 +14,12 @@
       {
         "label": "main",
         "title": "TrackMLN Installer",
-        "width": 1220,
-        "height": 620,
-        "minWidth": 1040,
-        "minHeight": 560,
-        "resizable": true,
-        "maximizable": true,
+        "width": 700,
+        "height": 520,
+        "minWidth": 560,
+        "minHeight": 440,
+        "resizable": false,
+        "maximizable": false,
         "decorations": false,
         "transparent": true,
         "center": true

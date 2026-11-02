@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import installerConfig from "./installer-config.json";
 import { Icon } from "./ui/Icon";
+const trackmlnLogo = new URL("../../assets/trackmln.svg", import.meta.url).href;
 
 type InstallResult = {
   installDir: string;
@@ -75,18 +76,15 @@ export default function App() {
 
   return (
     <main className="shell">
-      <div className="shell__backdrop" />
-
       <section className="window">
-        {/* Titlebar */}
         <header
           className="titlebar"
           data-tauri-drag-region
           onMouseDown={() => void handleDragStart()}
         >
-          <div className="titlebar__brand">
-            <span className="eyebrow">TrackMLN setup · {versionLabel}</span>
-            <strong className="titlebar__title">Installer</strong>
+          <div className="titlebar__brand" data-tauri-drag-region>
+            <img src={trackmlnLogo} alt="" />
+            <strong>TrackMLN</strong>
           </div>
           <div className="titlebar__actions" onMouseDown={(e) => e.stopPropagation()}>
             <button onClick={() => void handleWindowAction("minimize")} type="button" aria-label="Minimize">
@@ -98,26 +96,17 @@ export default function App() {
           </div>
         </header>
 
-        {/* Body */}
         <div className="body">
           <div className="content">
-            {/* Header */}
             <div className="install-header">
+              <img className="app-mark" src={trackmlnLogo} alt="" />
               <span className="eyebrow">Ready to install</span>
-              <h1>TrackMLN</h1>
-              <p>A quick local copy and registration — no network required.</p>
-
-              <ul className="checklist">
-                <li>Copies app to <code>%APPDATA%</code></li>
-                <li>Creates Start Menu shortcut</li>
-                <li>Runs on Windows startup (current user)</li>
-                <li>Launches immediately after install</li>
-              </ul>
+              <h1>TrackMLN Installation</h1>
+              <p>Quick local copy, no internet required.</p>
             </div>
 
-            {/* Destination tile */}
-            <div className="tile">
-              <span className="eyebrow">Destination</span>
+            <div className="destination">
+              <span className="eyebrow">Install location</span>
               <div className="path-row">
                 <textarea
                   aria-label="Install destination path"
@@ -131,31 +120,24 @@ export default function App() {
               </div>
             </div>
 
-            {/* Meta tiles */}
-            <div className="meta-row">
-              <div className="tile">
-                <span className="eyebrow">Shortcut</span>
-                <strong>Start Menu</strong>
-              </div>
-              <div className="tile">
-                <span className="eyebrow">Startup</span>
-                <strong>Current user</strong>
-              </div>
+            <div className="feature-row" aria-label="What the installer will do">
+              <div className="feature"><Icon name="check" size={15} /><span>Start Menu shortcut</span></div>
+              <div className="feature"><Icon name="check" size={15} /><span>Launches after install</span></div>
+              <div className="feature"><Icon name="check" size={15} /><span>Current user startup</span></div>
             </div>
 
-            {/* Option */}
             <label className="option">
               <input
                 checked={deleteInstaller}
                 onChange={(e) => setDeleteInstaller(e.target.checked)}
                 type="checkbox"
               />
-              <span style={{ fontSize: '14px' }}>Delete installer after finishing</span>
+              <span>Delete installer after finishing</span>
             </label>
           </div>
 
-          {/* Footer with CTA */}
           <footer className="footer">
+            <div className="footer__meta"><span>{versionLabel}</span><i /> <span>Melogne Studio</span></div>
             <div className="cta-row">
               <button
                 className="btn-install"
@@ -163,7 +145,7 @@ export default function App() {
                 onClick={handleInstall}
                 type="button"
               >
-                {status === "installing" ? "Installing…" : "Install now"}
+                {status === "installing" ? "Installing…" : <><span>Install</span><Icon name="arrowRight" size={17} /></>}
               </button>
 
               {status === "error" && error && (
