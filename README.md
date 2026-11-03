@@ -1,23 +1,8 @@
-# TrackMLN
-A Melogne Studio project.
-<p align="left">
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/studio-badge.svg" height="40">
-</p>
-<p align="left">
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/OS-badge.svg" height="30">
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/version-badge.svg" height="30">
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/license-badge.svg" height="30">
-</p>
+<img align="center" src=".github/assets/logo.svg">
 
-<p align="left">
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/backend-badge.svg" height="30">
-  <img src=https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/refs/heads/main/TrackMLN-assets/badges/framework-badge.svg height="30">
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/ui-badge.svg" height="30">
-</p>
+TrackMLN is a Windows desktop app for screen time, tasks, focus sessions and your daily schedule, all in one place.
 
-TrackMLN is a Windows desktop app for lightweight screen-time tracking.
-
-It runs as a Tauri app with a React frontend, watches the currently focused window, logs usage locally, and shows the data in a full-screen glass-style dashboard you can toggle with a global shortcut. Now with screen time limits that will personally bother you until you close YouTube.
+It runs as a Tauri app with a React frontend, logs usage locally, and shows everything in one dashboard you can toggle with a global shortcut. Now with screen time limits that will personally bother you until you close YouTube.
 
 ### ⚠️ Common "bugs" for people who don't read the readme and go straight to downloading
 1. **Does not** open directly by clicking it through windows start menu. **Use Hotkey or system tray** Control + Shift + Space
@@ -25,33 +10,49 @@ It runs as a Tauri app with a React frontend, watches the currently focused wind
 
 > ℹ️ Windows only. (Because I don't have MacOS or Linux 🥀. I won't download Linux for 1 single repo)
 
-## What It Does
+## Features
 
-- Tracks the active foreground app once per second
-- Stores session history locally in SQLite (your data stays on your machine, not my problem)
-- Shows a `Today` dashboard with:
-  - total tracked time
-  - most-used apps
-  - hourly usage bars
-- Shows a `Week` dashboard with:
-  - weekly totals
-  - most-used apps across the last 7 days
-  - daily usage trend vs current and previous week averages
-  - per-day app breakdown
-- `Goals` tab for setting per-app screen time limits with two escalating alert modes (more below)
-- `Settings` screen for changing the global shortcut, adjusting glass blur/opacity strength, and customizing app names
-- Two visual modes: **Mica** (default — minimalist, zero GPU) and **Liquid Glass** (more depth and animation, negligibly low GPU)
-- Runs from the system tray, show/hide with a hotkey (`Ctrl + Shift + Space` by default)
-- Comes with a separate installer app so you don't have to deal with any of that yourself
+**Screen time**
+- Tracks the active app every second, stored locally in SQLite
+- Today, 7 day and 30 day views with hourly usage bars
+- Per-app deep dives, comparison with the previous period
+- Daily average, busiest day, longest session and session count
+- Pause when idle
+
+**Focus**
+- Custom presets (focus length, break length, sessions)
+- Link a session to a task
+- Ring timer with pause, skip, stop and +5 minutes
+- 7 day focus history
+- Focus overlay, summoned with a global hotkey or shown when a phase ends
+
+**Tasks**
+- Priority, estimate, due date/time and notes
+- Repeating tasks via templates
+- One click from a task to a focus session
+
+**Timetable**
+- Week and day views with time blocks
+- Overlapping blocks sit side by side
+- Live "Now" line
+
+**Limits**
+- Limit total screen time or individual apps
+- **Warn**: a small popup at the bottom of the screen. Easy to ignore.
+- **Annoy**: a full-screen popup you can't move or Alt+F4. Snooze is your only option, and it shrinks every time: 5 min → 3 min → 1 min → forever. You did this to yourself.
+
+**Personalisation**
+- Color themes and Solid → Glassy sidebar
+- Manage Names: map `javaw.exe` to `Minecraft`
+- Configurable global hotkeys, onboarding flow, system tray
+- Local-first: no accounts, no cloud
 
 ## How to Download
 
-Just want it now? Click the download button
-
-Or grab it from the Releases page — look for `trackmln-installer-v1.x.x.exe` in the Assets section.
+Click the download button, or grab `trackmln-installer-v3.x.x.exe` from the Releases page.
 
 <p align="left">
-  <a href="https://github.com/WTRMLNv1/TrackMLN/releases/download/v1.2.2/trackmln-installer-v1.2.2.exe">
+  <a href="https://github.com/WTRMLNv1/TrackMLN/releases/download/v3.0.0/trackmln-installer-v3.0.0.exe">
     <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/download_button.svg" height="30">
   </a>
 </p>
@@ -62,280 +63,106 @@ Or grab it from the Releases page — look for `trackmln-installer-v1.x.x.exe` i
   </a>
 </p>
 
-> ⚠️ Do **not** install `trackmln-main-v1.x.x.exe` — it's not intended for normal use and won't show up as an app without manual setup.
-
-After downloading:
+> ⚠️ Do **not** install `trackmln-main-v3.x.x.exe` - it's not intended for normal use.
 
 1. Run the installer
-2. If Windows SmartScreen appears, click `More info` → `Run anyway`
-   *(The app isn't code-signed yet — this is expected)*
+2. If Windows SmartScreen appears, click `More info` → `Run anyway` *(the app isn't code-signed yet)*
 3. Finish setup
 
-The installer will:
-- install TrackMLN into your local app data folder
-- create a Start Menu shortcut
-- add TrackMLN to Windows startup
-- launch the app automatically after install
-
-To disable auto-startup: `Settings → Apps → Startup Apps → TrackMLN → Off`
-
-> ⚠️ Not recommended — you'll have to launch it manually every time, which kind of defeats the purpose.
+The installer copies TrackMLN to your local app data folder, creates a Start Menu shortcut, adds it to Windows startup and launches it. To disable startup: `Settings → Apps → Startup Apps → TrackMLN → Off`
 
 ## What's New
 
-### v1.2.2
-- Alt+F4 is now blocked until the snooze button is available — no bailing out early
-- Alt+F4 now behaves like snooze instead of closing the window
-- Removed the dismiss button — snooze or nothing
-- Annoy window is now full-screen
-- Annoy window is no longer draggable
-- Snooze times adjusted to 5 min → 3 min → 1 min → forever
-- Annoy window messages are now randomised
-- Fixed default-looking text boxes in the Exe Labels modal [Glass version] to match Mica styling
+### v3.0.0
+- Brand new UI and onboarding flow
+- Added Focus page: presets, ring timer, task linking, 7 day analytics
+- Added focus overlay with a global hotkey
+- Added Tasks with priorities, estimates, due times and repeating templates
+- Added Timetable with week/day views and a live "Now" line
+- Added 7 day and 30 day ranges, per-app deep dives and new stats
+- Added Pause when idle
+- More reliable tracking across sleep and midnight
+- Live progress meters for Warn and Annoy limits
+- Added color themes and sidebar translucency slider
+- Added a global hotkey for the quick overlay
+- Renamed "Exe Labels" to Manage Names
 
-### v1.2.1
-- Added `Goals` tab with per-app screen time limits
-- Added **Warn** alert — a small popup at the bottom of the screen when you hit your warn time
-- Added **Annoy** alert — a full-screen popup with a 5-second cooldown on dismiss that appears when you hit your annoy time. Dismiss makes it go away for 10 minutes. Snooze time shrinks every time you snooze it. You did this to yourself.
-- Updated installer layout
-- Fixed installer not deleting itself after install (it said it would. it didn't. now it does.)
+Older versions are on the [Releases page](https://github.com/WTRMLNv1/TrackMLN/releases).
 
-### v1.2.0
-- Added editable app name labels in `Settings`, so exe-based names can now be customized without changing tracked history
-- Refactored app tracking to use normalized executable paths as the internal app identity
-- Prevented renamed app labels from splitting usage history into separate apps
-- Added app-name resolution cache for per-path app names and metadata reuse across launches
-- Added Windows executable metadata lookup for friendlier app names when available
-- Added AppxManifest parsing for MSIX / Windows Store apps to resolve names like `ChatGPT` and `TradingView` correctly
-- Kept existing exe-name prettification as the final fallback when metadata is unavailable
-- Preserved full paths as internal-only data so normal UI continues showing friendly app names instead of raw paths
+## Screenshot
 
-### v1.1.0
-- Blur slider now works — adjusts opacity and blur of cards and sidebar
-- Added **Mica** and **Liquid Glass** visual modes (switchable in Settings)
-- Fixed hourly chart hover jumping to the wrong time
-- Fixed scrollbar mismatch
-- Fixed data display inconsistency
+<img src=".github/assets/Screenshot 2026-11-01 205254.png" a="Dashboard">
 
-### v1.0.1
-- Fixed sleep time being logged as screen time
-- Fixed record sleep time tracking
+## How Tracking Works
 
-### v1.0.0
-- Initial release
+The Rust backend polls the foreground window every second and writes a session to the local database whenever the focused app changes. Idle time is paused, sleep is never counted, and sessions that cross midnight are split across both days.
 
-## Screenshots
+App names are resolved in this order:
+1. **Manage Names** - your custom names, checked first
+2. **AppxManifest** - for Windows Store apps like `ChatGPT`
+3. **Version info** - Windows executable metadata
+4. **Prettify fallback** - strips `.exe`, capitalizes, cleans up separators
 
-### Daily View
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/daily_mica.png" width="420" />
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/daily_liquid-glass.png" width="420" />
-</p>
-
-<p align="center">
-  <sub>Left: Mica</sub>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <sub>Right: Liquid Glass</sub>
-</p>
-
----
-
-### Weekly View
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/weekly_mica.png" width="420" />
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/weekly_liquid-glass.png" width="420" />
-</p>
-
-<p align="center">
-  <sub>Left: Mica</sub>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <sub>Right: Liquid Glass</sub>
-</p>
-
----
-
-### Settings
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/settings_mica.png" width="420" />
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/settings_liquid-glass.png" width="420" />
-</p>
-
-<p align="center">
-  <sub>Left: Mica</sub>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <sub>Right: Liquid Glass</sub>
-</p>
-
----
-
-### Installer
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/installer.png" width="850" />
-</p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/mogging%20peppa.jpeg" width="30" />
-</p>
-
-## Current Scope
-
-TrackMLN is intentionally local and simple for now.
-
-- All data stays on your machine — no accounts, no cloud sync
-- Windows-only because the tracker uses Windows APIs to read the active foreground process
-- Goals and limit enforcement are now live
-
-## How Screen Time Limits Work
-
-Set per-app limits in the `Goals` tab. Each app can have two thresholds:
-
-- **Warn time** — a small popup appears at the bottom of the screen. Gentle. Informative. Easy to ignore.
-- **Annoy time** — a full-screen popup takes over. You can't move it, you can't Alt+F4 it, and there's a cooldown before you can do anything. Snooze is your only option, and the snooze window shrinks every time you use it: 5 min → 3 min → 1 min → forever. You set this limit. You did this.
+Apps are tracked by full executable path internally, so renaming an app won't split its history.
 
 ## Tech Stack
 
-- Tauri 2
-- React 18
-- TypeScript
-- Vite
-- Rust
-- SQLite via `rusqlite`
-- Recharts
-
-## Project Structure
+Tauri 2, React 18, TypeScript, Vite, Rust, SQLite via `rusqlite`, Recharts
 
 ```text
 .
-├─ src/                     React UI for the main TrackMLN app
+├─ src/                     React UI for the main app
 ├─ src-tauri/               Rust backend for the main app
 ├─ installer/               Separate Tauri app that installs TrackMLN
 │  ├─ src/                  Installer frontend
 │  └─ src-tauri/            Installer backend
 ```
 
-## How Tracking Works
+## Local Data
 
-The Rust backend polls the active foreground window every second. When the focused executable changes, it writes the previous session to the local database with the app name, start time, and end time.
+Everything is stored in the Tauri app data directory:
 
-App names are resolved in this order:
-1. **Exe Labels** — your custom names from Settings, checked first
-2. **AppxManifest** — for MSIX / Windows Store apps like `ChatGPT` or `TradingView`
-3. **Version info** — Windows executable metadata for friendlier names
-4. **Prettify fallback** — capitalizes, strips `.exe`, turns `-`, `_`, `.` into spaces
+- `trackmln.db` - sessions, goals, tasks, focus sessions and timetable
+- `settings.json` - shortcuts, theme, translucency, app names and onboarding state
 
-Apps are tracked by their full executable path internally, so renaming an app in Settings won't split its history.
-
-Idle and unknown windows are filtered out of the dashboard views.
+The main window starts hidden. Closing it hides it instead of quitting, so use the tray icon to exit fully. Default shortcut: `Ctrl + Shift + Space`.
 
 ## Known Bugs
 
-There are some small bugs in screen time limits, visual and slightly functional. I am trying to fix them by next update.
-If anything explodes, report a bug :,)
+There might still be small bugs, mostly in screen time limits and the new v3 UI. If anything explodes, report a bug :,)
 
 <p align="left">
   <a href="https://github.com/WTRMLNv1/TrackMLN/issues">
-    <img src="https://github.com/WTRMLNv1/WTRMLNv1/blob/main/TrackMLN-assets/badges/report-a-bug.svg" height="30">
+    <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/report-a-bug.svg" height="30">
   </a>
 </p>
 
-## Local Data
-
-TrackMLN stores everything in the Tauri app data directory:
-
-- `trackmln.db` — session history and goals
-- `settings.json` — global shortcut, blur percentage, and exe labels
-
-## Default Behavior
-
-- Default toggle shortcut: `Ctrl + Shift + Space`
-- The main window starts hidden
-- Closing the window hides it instead of quitting — use the tray icon to exit fully
-
-## Planned
-
-- Notifications and limit enforcement sounds/escalation
-- macOS support (buy me a Mac)
-
-## Known Limitations
-
-- Windows-only (will make macOS if you buy me a MacBook to test it on ;))
-- No cloud sync
-
 ## Development
 
-### Requirements
-
-- Windows
-- Node.js + npm
-- Rust toolchain
-- Tauri prerequisites for Windows
-
-### Install dependencies
-
-From the project root:
+Requirements: Windows, Node.js + npm, Rust toolchain, Tauri prerequisites for Windows.
 
 ```powershell
-npm install
+npm install          # from the project root, the installer reuses this
+npm run tauri:dev    # Vite on http://localhost:1420 + the Tauri app
+npm run tauri:build  # build the main app
 ```
 
-The installer reuses the root `node_modules`, so you usually don't need a second install inside `installer/`.
+> If you run a debug binary without the dev server running, it'll probably break. Use a release build or the installer.
 
-### Run the main app in dev mode
-
-```powershell
-npm run tauri:dev
-```
-
-This starts the Vite dev server on `http://localhost:1420` and the Tauri desktop app.
-
-> Note: If you run a debug binary directly without the dev server running, it'll probably break. Use a release build or the installer for normal behavior.
-
-### Build the main app
+To build the installer, build the main app first, then:
 
 ```powershell
-npm run tauri:build
-```
-
-## Installer
-
-The `installer/` folder is a separate Tauri app that:
-
-- Copies the bundled app to `%APPDATA%\TrackMLN\TrackMLN.exe`
-- Creates a Start Menu shortcut
-- Adds TrackMLN to Windows startup for the current user
-- Launches the app after setup
-
-### Build the installer
-
-Build the main app first, then the installer.
-
-```powershell
-# Step 1 — build the main app
-npm run tauri:build
-
-# Step 2 — build the installer
 cd installer
 npm run tauri:build
 ```
 
-The installer build automatically copies the main app executable into `installer/src-tauri/assets/trackmln.exe` — no manual copying needed.
-
-## Notes for Contributors
-
-- The repo ignores generated binaries, build folders, and the bundled installer payload
-- The installer source is tracked, but the embedded `trackmln.exe` is not
+The installer build copies the main app executable into `installer/src-tauri/assets/trackmln.exe` automatically. That file and other generated binaries are gitignored.
 
 ## License
 
-Source-available — free for non-commercial use.
-See [LICENSE](./LICENSE) for full terms.
-(idk what its called ive only heard of MIT :/)
+Source available under an NC License.
 
 ---
 
-Made with 💚, Debugged with 😭 by [WTRMLN](https://github.com/WTRMLNv1) @ Melogne Studio
+Made with 💚, Debugged with 😭 by [WTRMLN](https://github.com/WTRMLNv1) [@Melogne Studio](https://github.com/MelogneStudio)
 © 2026 Melogne Studio
